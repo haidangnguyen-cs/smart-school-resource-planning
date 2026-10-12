@@ -35,25 +35,17 @@ def render_kpi_card(
         else ""
     )
 
-    card_html = f"""
-    <div style='
-        background: {bg_gradient};
-        border: 1px solid {border_color};
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-        margin-bottom: 12px;
-    '>
-        <div style='font-size: 0.85rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;'>
-            {title}
-        </div>
-        <div style='font-size: 1.85rem; font-weight: 700; color: #0F172A; line-height: 1.2; margin-top: 6px;'>
-            {value}
-        </div>
-        {delta_html}
-        {sub_html}
-    </div>
-    """
+    card_html = (
+        f"<div style='background: {bg_gradient}; border: 1px solid {border_color}; "
+        f"border-radius: 12px; padding: 16px 20px; "
+        f"box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); "
+        f"margin-bottom: 12px;'>"
+        f"<div style='font-size: 0.85rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em;'>{title}</div>"
+        f"<div style='font-size: 1.85rem; font-weight: 700; color: #0F172A; line-height: 1.2; margin-top: 6px;'>{value}</div>"
+        f"{delta_html}"
+        f"{sub_html}"
+        f"</div>"
+    )
     st.markdown(card_html, unsafe_allow_html=True)
 
 

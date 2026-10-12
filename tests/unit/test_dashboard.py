@@ -307,3 +307,27 @@ def test_missing_data_styler_format():
     assert ">0<" in rendered  # Observed zero student count renders as 0
     assert ">0.0<" in rendered  # Observed zero teacher FTE renders as 0.0
     assert ">500<" in rendered  # Normal value renders
+
+
+def test_render_kpi_card_no_indented_code_blocks(monkeypatch):
+    """Verify render_kpi_card produces clean HTML without indented lines that trigger Markdown code blocks."""
+    from app.components.kpi_cards import render_kpi_card
+
+    captured = []
+    monkeypatch.setattr("streamlit.markdown", lambda body, **kwargs: captured.append(body))
+
+    render_kpi_card(
+        title="Operational Schools",
+        value="100,418",
+        subtitle="Active reported facilities",
+        delta=None,
+    )
+    assert len(captured) == 1
+    html = captured[0]
+    assert "Active reported facilities" in html
+    assert "Operational Schools" in html
+    assert "100,418" in html
+    for line in html.splitlines():
+        assert not line.startswith("    "), (
+            f"Indented line detected which triggers CommonMark code blocks: {line}"
+        )
