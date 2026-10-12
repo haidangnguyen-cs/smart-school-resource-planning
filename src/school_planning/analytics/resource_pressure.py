@@ -155,13 +155,25 @@ def classify_resource_pressure(
     # - is_operational is False
     # - school_status in TRANSITION_REVIEW_STATUSES ('Added', 'Changed Boundary/Agency', 'Reopened')
     # - student_teacher_ratio is null or < 0.0 (valid zero ratio with positive FTE is not P1)
-    students = pd.to_numeric(res[students_col], errors="coerce") if students_col in res.columns else pd.Series(np.nan, index=res.index)
-    teachers = pd.to_numeric(res[teachers_col], errors="coerce") if teachers_col in res.columns else pd.Series(np.nan, index=res.index)
-    ratios = pd.to_numeric(res[ratio_col], errors="coerce") if ratio_col in res.columns else pd.Series(np.nan, index=res.index)
+    students = (
+        pd.to_numeric(res[students_col], errors="coerce")
+        if students_col in res.columns
+        else pd.Series(np.nan, index=res.index)
+    )
+    teachers = (
+        pd.to_numeric(res[teachers_col], errors="coerce")
+        if teachers_col in res.columns
+        else pd.Series(np.nan, index=res.index)
+    )
+    ratios = (
+        pd.to_numeric(res[ratio_col], errors="coerce")
+        if ratio_col in res.columns
+        else pd.Series(np.nan, index=res.index)
+    )
 
     missing_students = students.isna() | (students < 0)
     missing_teachers = teachers.isna() | (teachers < 0)
-    zero_teachers = (teachers == 0.0)
+    zero_teachers = teachers == 0.0
 
     if anomaly_col in res.columns:
         zero_teachers = zero_teachers | res[anomaly_col].fillna(False).astype(bool)
@@ -176,7 +188,9 @@ def classify_resource_pressure(
 
     is_transition_status = pd.Series(False, index=res.index)
     if status_col in res.columns:
-        is_transition_status = res[status_col].astype(str).str.strip().isin(TRANSITION_REVIEW_STATUSES)
+        is_transition_status = (
+            res[status_col].astype(str).str.strip().isin(TRANSITION_REVIEW_STATUSES)
+        )
 
     missing_or_invalid_ratio = ratios.isna() | (ratios < 0.0)
 
@@ -193,13 +207,25 @@ def classify_resource_pressure(
     # 3. Evaluate Priority 2: High Current Ratio
     # Complete operational data AND is_above_p90_ratio is True
     # Note: is_above_p90_ratio already requires is_p90_eligible (Regular School + Elementary/Middle/High + Operational)
-    is_above_p90 = res[above_p90_col].fillna(False).astype(bool) if above_p90_col in res.columns else pd.Series(False, index=res.index)
+    is_above_p90 = (
+        res[above_p90_col].fillna(False).astype(bool)
+        if above_p90_col in res.columns
+        else pd.Series(False, index=res.index)
+    )
     is_p2 = (~is_p1) & is_above_p90
 
     # 4. Evaluate Growth Metrics Availability
     # Both ratio growth and growth gap must be valid non-null numbers
-    ratio_growth = pd.to_numeric(res[ratio_growth_col], errors="coerce") if ratio_growth_col in res.columns else pd.Series(np.nan, index=res.index)
-    growth_gap = pd.to_numeric(res[growth_gap_col], errors="coerce") if growth_gap_col in res.columns else pd.Series(np.nan, index=res.index)
+    ratio_growth = (
+        pd.to_numeric(res[ratio_growth_col], errors="coerce")
+        if ratio_growth_col in res.columns
+        else pd.Series(np.nan, index=res.index)
+    )
+    growth_gap = (
+        pd.to_numeric(res[growth_gap_col], errors="coerce")
+        if growth_gap_col in res.columns
+        else pd.Series(np.nan, index=res.index)
+    )
 
     has_valid_growth = ratio_growth.notna() & growth_gap.notna()
     res["has_valid_growth_metrics"] = has_valid_growth
@@ -218,7 +244,15 @@ def classify_resource_pressure(
 
     # 8. Evaluate Priority 6: Stable / Balanced
     # Complete data, not P2, not P3, not P4, and growth is assessed within normal bounds
-    is_p6 = (~is_p1) & (~is_p2) & (~is_p3) & (~is_p4) & has_valid_growth & (ratio_growth < tau_ratio_rise) & (growth_gap < tau_growth_gap)
+    is_p6 = (
+        (~is_p1)
+        & (~is_p2)
+        & (~is_p3)
+        & (~is_p4)
+        & has_valid_growth
+        & (ratio_growth < tau_ratio_rise)
+        & (growth_gap < tau_growth_gap)
+    )
 
     # Deterministic assignment using np.select
     tier_conditions = [is_p1, is_p2, is_p3, is_p4, is_p5, is_p6]
@@ -232,8 +266,12 @@ def classify_resource_pressure(
     ]
     priority_codes = [1, 2, 3, 4, 5, 6]
 
-    res["resource_pressure_tier"] = np.select(tier_conditions, tier_labels, default=PRIORITY_1_LABEL)
-    res["resource_pressure_priority"] = np.select(tier_conditions, priority_codes, default=1).astype(int)
+    res["resource_pressure_tier"] = np.select(
+        tier_conditions, tier_labels, default=PRIORITY_1_LABEL
+    )
+    res["resource_pressure_priority"] = np.select(
+        tier_conditions, priority_codes, default=1
+    ).astype(int)
 
     # Record provisional thresholds used for auditability
     res["tau_ratio_rise"] = tau_ratio_rise
@@ -285,7 +323,11 @@ def summarize_resource_pressure_tiers(
         sub = df[df[year_col] == yr] if year_col in df.columns else df
         tot_records = len(sub)
 
-        op_mask = sub[operational_col].fillna(False).astype(bool) if operational_col in sub.columns else pd.Series(True, index=sub.index)
+        op_mask = (
+            sub[operational_col].fillna(False).astype(bool)
+            if operational_col in sub.columns
+            else pd.Series(True, index=sub.index)
+        )
         tot_op_records = int(op_mask.sum())
 
         for tier in PRIORITY_TIER_ORDER:
@@ -301,34 +343,56 @@ def summarize_resource_pressure_tiers(
             pct_panel = round(cnt / tot_records * 100, 2) if tot_records > 0 else 0.0
             pct_op = round(op_cnt / tot_op_records * 100, 2) if tot_op_records > 0 else 0.0
 
-            unique_schools = int(tier_sub[school_id_col].nunique()) if school_id_col in tier_sub.columns else cnt
+            unique_schools = (
+                int(tier_sub[school_id_col].nunique()) if school_id_col in tier_sub.columns else cnt
+            )
 
-            valid_ratios = tier_sub[ratio_col].dropna() if ratio_col in tier_sub.columns else pd.Series(dtype=float)
+            valid_ratios = (
+                tier_sub[ratio_col].dropna()
+                if ratio_col in tier_sub.columns
+                else pd.Series(dtype=float)
+            )
             med_ratio = round(float(valid_ratios.median()), 2) if not valid_ratios.empty else np.nan
 
-            valid_rg = tier_sub[ratio_growth_col].dropna() if ratio_growth_col in tier_sub.columns else pd.Series(dtype=float)
+            valid_rg = (
+                tier_sub[ratio_growth_col].dropna()
+                if ratio_growth_col in tier_sub.columns
+                else pd.Series(dtype=float)
+            )
             med_rg = round(float(valid_rg.median()), 2) if not valid_rg.empty else np.nan
 
-            valid_gg = tier_sub[growth_gap_col].dropna() if growth_gap_col in tier_sub.columns else pd.Series(dtype=float)
+            valid_gg = (
+                tier_sub[growth_gap_col].dropna()
+                if growth_gap_col in tier_sub.columns
+                else pd.Series(dtype=float)
+            )
             med_gg = round(float(valid_gg.median()), 2) if not valid_gg.empty else np.nan
 
-            rows.append({
-                "school_year": yr,
-                "resource_pressure_priority": PRIORITY_TIER_TO_CODE.get(tier, 0),
-                "resource_pressure_tier": tier,
-                "observation_count": cnt,
-                "operational_observation_count": op_cnt,
-                "pct_of_panel": pct_panel,
-                "pct_of_operational": pct_op,
-                "unique_schools_count": unique_schools,
-                "median_student_teacher_ratio": med_ratio,
-                "median_ratio_growth_pct": med_rg,
-                "median_growth_gap_pp": med_gg,
-            })
+            rows.append(
+                {
+                    "school_year": yr,
+                    "resource_pressure_priority": PRIORITY_TIER_TO_CODE.get(tier, 0),
+                    "resource_pressure_tier": tier,
+                    "observation_count": cnt,
+                    "operational_observation_count": op_cnt,
+                    "pct_of_panel": pct_panel,
+                    "pct_of_operational": pct_op,
+                    "unique_schools_count": unique_schools,
+                    "median_student_teacher_ratio": med_ratio,
+                    "median_ratio_growth_pct": med_rg,
+                    "median_growth_gap_pp": med_gg,
+                }
+            )
 
     res_df = pd.DataFrame(rows)
-    if not res_df.empty and "school_year" in res_df.columns and "resource_pressure_priority" in res_df.columns:
-        res_df = res_df.sort_values(["school_year", "resource_pressure_priority"]).reset_index(drop=True)
+    if (
+        not res_df.empty
+        and "school_year" in res_df.columns
+        and "resource_pressure_priority" in res_df.columns
+    ):
+        res_df = res_df.sort_values(["school_year", "resource_pressure_priority"]).reset_index(
+            drop=True
+        )
     return res_df
 
 
@@ -366,7 +430,11 @@ def summarize_resource_pressure_by_state(
         yr = name[1] if isinstance(name, tuple) and len(name) > 1 else "All"
 
         tot = len(group)
-        op_cnt = int(group[operational_col].fillna(False).astype(bool).sum()) if operational_col in group.columns else tot
+        op_cnt = (
+            int(group[operational_col].fillna(False).astype(bool).sum())
+            if operational_col in group.columns
+            else tot
+        )
 
         row_data: dict[str, Any] = {
             state_col: st,

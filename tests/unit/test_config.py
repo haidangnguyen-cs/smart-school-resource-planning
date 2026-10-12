@@ -98,7 +98,10 @@ class TestSourcesConfigContract:
     def test_membership_052_contract_indicator_and_panel_rule(self, sources_config: dict):
         m52 = sources_config["components"]["membership"]
         contract = m52.get("total_indicator_contract", {})
-        assert contract.get("primary_choice") == "Derived - Education Unit Total minus Adult Education Count"
+        assert (
+            contract.get("primary_choice")
+            == "Derived - Education Unit Total minus Adult Education Count"
+        )
         assert contract.get("secondary_choice") == "Education Unit Total"
         assert "primary_panel_rule" in contract
         assert "1:1" in contract.get("primary_panel_rule", "")
@@ -188,7 +191,10 @@ class TestQualityRulesContract:
     def test_membership_grain_isolation_rule(self, quality_rules_config: dict):
         m_rules = quality_rules_config.get("table_grain_rules", {}).get("membership", {})
         assert m_rules["filtered_grain"] == ["school_id", "school_year"]
-        assert m_rules["primary_panel_indicator"] == "Derived - Education Unit Total minus Adult Education Count"
+        assert (
+            m_rules["primary_panel_indicator"]
+            == "Derived - Education Unit Total minus Adult Education Count"
+        )
         assert "grain_isolation_rule" in m_rules
 
     def test_join_semantics_and_cardinality(self, quality_rules_config: dict):
@@ -196,7 +202,9 @@ class TestQualityRulesContract:
         assert joins.get("spine_table") == "directory"
         for j in joins.get("joins", []):
             # Target tables have unique keys, guaranteeing at most one match per directory record (1:0..1)
-            assert j.get("cardinality") == "one_to_zero_or_one", f"Join to {j.get('table')} must be one_to_zero_or_one"
+            assert j.get("cardinality") == "one_to_zero_or_one", (
+                f"Join to {j.get('table')} must be one_to_zero_or_one"
+            )
             assert j.get("target_key_unique") is True
             assert j.get("unmatched_spine_permitted") is True
 
@@ -240,7 +248,9 @@ class TestKpiDefinitionsContract:
     )
     def test_kpi_present(self, kpi_definitions_config: dict, kpi_name: str):
         kpis = kpi_definitions_config.get("kpis", {})
-        assert kpi_name in kpis, f"KPI or contract section {kpi_name} missing from kpi_definitions.yaml"
+        assert kpi_name in kpis, (
+            f"KPI or contract section {kpi_name} missing from kpi_definitions.yaml"
+        )
 
     def test_student_teacher_ratio_caveat_and_zero_handling(self, kpi_definitions_config: dict):
         kpi = kpi_definitions_config["kpis"]["student_teacher_ratio"]
@@ -271,28 +281,53 @@ class TestKpiDefinitionsContract:
         # Issue 5: Unsupported numerical claim (>15,000 schools) must be removed
         assert "15,000" not in str(bench)
         assert "> 15,000" not in str(bench)
-        assert "Exploratory analysis and peer-group evaluation is responsible for reporting actual peer-group stratum sizes" in eligible.get("rationale", "")
+        assert (
+            "Exploratory analysis and peer-group evaluation is responsible for reporting actual peer-group stratum sizes"
+            in eligible.get("rationale", "")
+        )
 
         # Issue 4: Complete unbenchmarked-level handling including Secondary, Not applicable, Adult Education, and catch-all
         unbenchmarked = bench.get("unbenchmarked_peer_groups", {})
         assert "Special Education School" in unbenchmarked.get("non_regular_school_types", [])
         assert "Alternative School" in unbenchmarked.get("non_regular_school_types", [])
         observed_levels = unbenchmarked.get("observed_non_eligible_levels", [])
-        for lvl in ["Secondary", "Not applicable", "Adult Education", "Other", "Prekindergarten", "Ungraded", "Not reported", "Missing"]:
+        for lvl in [
+            "Secondary",
+            "Not applicable",
+            "Adult Education",
+            "Other",
+            "Prekindergarten",
+            "Ungraded",
+            "Not reported",
+            "Missing",
+        ]:
             assert lvl in observed_levels
 
         assert "catch_all_rule" in unbenchmarked
-        assert "outside the exact set {'Elementary', 'Middle', 'High'}" in unbenchmarked["catch_all_rule"]
+        assert (
+            "outside the exact set {'Elementary', 'Middle', 'High'}"
+            in unbenchmarked["catch_all_rule"]
+        )
         assert "handling_policy" in unbenchmarked
 
         # Issue 3: Peer group status dimension and unbenchmarked interpretation caveat
         status_dim = bench.get("peer_group_status_dimension", {})
-        assert status_dim.get("categories", {}).get("benchmarked") == "Benchmarked Regular Peer Group"
-        assert status_dim.get("categories", {}).get("unbenchmarked") == "Unbenchmarked / Specialized Peer Group"
+        assert (
+            status_dim.get("categories", {}).get("benchmarked") == "Benchmarked Regular Peer Group"
+        )
+        assert (
+            status_dim.get("categories", {}).get("unbenchmarked")
+            == "Unbenchmarked / Specialized Peer Group"
+        )
 
-        p6_rules = kpi_definitions_config["kpis"]["resource_pressure_tier"]["rules"]["priority_6_stable_balanced"]
+        p6_rules = kpi_definitions_config["kpis"]["resource_pressure_tier"]["rules"][
+            "priority_6_stable_balanced"
+        ]
         assert "unbenchmarked_interpretation_caveat" in p6_rules
-        assert "does not imply or certify that the school's absolute staffing levels" in p6_rules["unbenchmarked_interpretation_caveat"].lower()
+        assert (
+            "does not imply or certify that the school's absolute staffing levels"
+            in p6_rules["unbenchmarked_interpretation_caveat"].lower()
+        )
 
     def test_resource_pressure_tier_hierarchy(self, kpi_definitions_config: dict):
         tier_cfg = kpi_definitions_config["kpis"]["resource_pressure_tier"]
@@ -316,7 +351,7 @@ class TestTierClassificationBehavior:
 
     def get_peer_group_status(self, school_type: str, school_level: str) -> str:
         """Orthogonal peer group status dimension.
-        
+
         Adheres strictly to the catch-all rule: ONLY Regular School within {'Elementary', 'Middle', 'High'}
         is eligible for P90 decile benchmarking. Every other school level and school type is unbenchmarked.
         """
@@ -358,7 +393,8 @@ class TestTierClassificationBehavior:
 
         # Priority 2: High Current Ratio (evaluated strictly on regular schools with standard levels)
         is_eligible_p90 = (
-            self.get_peer_group_status(school_type, school_level) == "Benchmarked Regular Peer Group"
+            self.get_peer_group_status(school_type, school_level)
+            == "Benchmarked Regular Peer Group"
             and p90 is not None
         )
         if is_eligible_p90 and ratio >= p90:
@@ -368,9 +404,7 @@ class TestTierClassificationBehavior:
         # Triggered if prior-year record is missing OR if growth metrics could not be calculated
         # (e.g. prior year FTE was missing or zero, resulting in None growth metrics).
         growth_metrics_valid = (
-            has_prior_year_record
-            and ratio_growth_pct is not None
-            and growth_gap_pp is not None
+            has_prior_year_record and ratio_growth_pct is not None and growth_gap_pp is not None
         )
         if not growth_metrics_valid:
             return "Growth Unassessed / Incomplete Growth Data"
@@ -388,33 +422,90 @@ class TestTierClassificationBehavior:
 
     def test_incomplete_data_and_status_review_priority(self):
         # Missing enrollment
-        assert self.classify_school(None, 25.0, "Reported", True, ratio=None) == "Incomplete Data or Status Review"
+        assert (
+            self.classify_school(None, 25.0, "Reported", True, ratio=None)
+            == "Incomplete Data or Status Review"
+        )
         # Non-reported teacher data
-        assert self.classify_school(500, None, "Missing", True, ratio=None) == "Incomplete Data or Status Review"
+        assert (
+            self.classify_school(500, None, "Missing", True, ratio=None)
+            == "Incomplete Data or Status Review"
+        )
         # Zero teacher FTE
-        assert self.classify_school(500, 0.0, "Reported", True, ratio=None) == "Incomplete Data or Status Review"
+        assert (
+            self.classify_school(500, 0.0, "Reported", True, ratio=None)
+            == "Incomplete Data or Status Review"
+        )
         # Non-operational school
-        assert self.classify_school(500, 25.0, "Reported", False, ratio=20.0) == "Incomplete Data or Status Review"
+        assert (
+            self.classify_school(500, 25.0, "Reported", False, ratio=20.0)
+            == "Incomplete Data or Status Review"
+        )
         # Transition review statuses
-        assert self.classify_school(500, 25.0, "Reported", True, school_status="Added", ratio=20.0) == "Incomplete Data or Status Review"
-        assert self.classify_school(500, 25.0, "Reported", True, school_status="Changed Boundary/Agency", ratio=20.0) == "Incomplete Data or Status Review"
-        assert self.classify_school(500, 25.0, "Reported", True, school_status="Reopened", ratio=20.0) == "Incomplete Data or Status Review"
+        assert (
+            self.classify_school(500, 25.0, "Reported", True, school_status="Added", ratio=20.0)
+            == "Incomplete Data or Status Review"
+        )
+        assert (
+            self.classify_school(
+                500, 25.0, "Reported", True, school_status="Changed Boundary/Agency", ratio=20.0
+            )
+            == "Incomplete Data or Status Review"
+        )
+        assert (
+            self.classify_school(500, 25.0, "Reported", True, school_status="Reopened", ratio=20.0)
+            == "Incomplete Data or Status Review"
+        )
 
     def test_high_ratio_priority_and_tie_handling(self):
         # Regular school ratio >= P90 gets High Current Ratio even if growth gap is very high
-        assert self.get_peer_group_status("Regular School", "Elementary") == "Benchmarked Regular Peer Group"
-        assert self.classify_school(600, 20.0, "Reported", True, ratio=30.0, p90=25.0, ratio_growth_pct=20.0, growth_gap_pp=10.0) == "High Current Ratio"
+        assert (
+            self.get_peer_group_status("Regular School", "Elementary")
+            == "Benchmarked Regular Peer Group"
+        )
+        assert (
+            self.classify_school(
+                600,
+                20.0,
+                "Reported",
+                True,
+                ratio=30.0,
+                p90=25.0,
+                ratio_growth_pct=20.0,
+                growth_gap_pp=10.0,
+            )
+            == "High Current Ratio"
+        )
         # Exact tie: ratio == P90
-        assert self.classify_school(500, 20.0, "Reported", True, ratio=25.0, p90=25.0, ratio_growth_pct=0.0, growth_gap_pp=0.0) == "High Current Ratio"
+        assert (
+            self.classify_school(
+                500,
+                20.0,
+                "Reported",
+                True,
+                ratio=25.0,
+                p90=25.0,
+                ratio_growth_pct=0.0,
+                growth_gap_pp=0.0,
+            )
+            == "High Current Ratio"
+        )
 
     def test_specialized_peer_group_bypasses_p90(self):
         # Special Education school with ratio >= regular P90 must NOT be assigned to regular High Current Ratio
-        assert self.get_peer_group_status("Special Education School", "Elementary") == "Unbenchmarked / Specialized Peer Group"
+        assert (
+            self.get_peer_group_status("Special Education School", "Elementary")
+            == "Unbenchmarked / Specialized Peer Group"
+        )
         result = self.classify_school(
-            50, 2.0, "Reported", True,
+            50,
+            2.0,
+            "Reported",
+            True,
             school_type="Special Education School",
             school_level="Elementary",
-            ratio=25.0, p90=20.0,
+            ratio=25.0,
+            p90=20.0,
             has_prior_year_record=True,
             ratio_growth_pct=2.0,
             growth_gap_pp=1.0,
@@ -422,12 +513,19 @@ class TestTierClassificationBehavior:
         assert result == "Stable / Balanced"
 
         # Alternative school with high growth gap bypasses P90 and gets Staffing Growth Deficit
-        assert self.get_peer_group_status("Alternative School", "High") == "Unbenchmarked / Specialized Peer Group"
+        assert (
+            self.get_peer_group_status("Alternative School", "High")
+            == "Unbenchmarked / Specialized Peer Group"
+        )
         alt_result = self.classify_school(
-            100, 4.0, "Reported", True,
+            100,
+            4.0,
+            "Reported",
+            True,
             school_type="Alternative School",
             school_level="High",
-            ratio=25.0, p90=20.0,
+            ratio=25.0,
+            p90=20.0,
             has_prior_year_record=True,
             ratio_growth_pct=2.0,
             growth_gap_pp=8.0,
@@ -454,14 +552,20 @@ class TestTierClassificationBehavior:
         for level in non_eligible_levels:
             # Must be classified as unbenchmarked peer group
             status = self.get_peer_group_status("Regular School", level)
-            assert status == "Unbenchmarked / Specialized Peer Group", f"Level '{level}' was not classified as unbenchmarked"
+            assert status == "Unbenchmarked / Specialized Peer Group", (
+                f"Level '{level}' was not classified as unbenchmarked"
+            )
 
             # Must bypass Priority 2 even when ratio exceeds regular P90
             result = self.classify_school(
-                400, 16.0, "Reported", True,
+                400,
+                16.0,
+                "Reported",
+                True,
                 school_type="Regular School",
                 school_level=level,
-                ratio=25.0, p90=20.0,
+                ratio=25.0,
+                p90=20.0,
                 has_prior_year_record=True,
                 ratio_growth_pct=2.0,
                 growth_gap_pp=1.0,
@@ -482,10 +586,14 @@ class TestTierClassificationBehavior:
         for s_type, s_level in test_cases:
             status = self.get_peer_group_status(s_type, s_level)
             tier = self.classify_school(
-                200, 10.0, "Reported", True,
+                200,
+                10.0,
+                "Reported",
+                True,
                 school_type=s_type,
                 school_level=s_level,
-                ratio=20.0, p90=15.0,
+                ratio=20.0,
+                p90=15.0,
                 has_prior_year_record=True,
                 ratio_growth_pct=1.0,
                 growth_gap_pp=1.0,
@@ -495,23 +603,86 @@ class TestTierClassificationBehavior:
 
     def test_rapidly_rising_ratio_priority(self):
         # Ratio < P90, but ratio grew 20% (>= 15%)
-        assert self.classify_school(400, 20.0, "Reported", True, ratio=20.0, p90=25.0, ratio_growth_pct=20.0, growth_gap_pp=2.0) == "Rapidly Rising Ratio"
+        assert (
+            self.classify_school(
+                400,
+                20.0,
+                "Reported",
+                True,
+                ratio=20.0,
+                p90=25.0,
+                ratio_growth_pct=20.0,
+                growth_gap_pp=2.0,
+            )
+            == "Rapidly Rising Ratio"
+        )
 
     def test_staffing_growth_deficit(self):
         # Ratio < P90, not rapidly rising (ratio growth 5%), but growth gap >= 5.0 pp
-        assert self.classify_school(400, 20.0, "Reported", True, ratio=20.0, p90=25.0, ratio_growth_pct=5.0, growth_gap_pp=7.5) == "Staffing Growth Deficit"
+        assert (
+            self.classify_school(
+                400,
+                20.0,
+                "Reported",
+                True,
+                ratio=20.0,
+                p90=25.0,
+                ratio_growth_pct=5.0,
+                growth_gap_pp=7.5,
+            )
+            == "Staffing Growth Deficit"
+        )
 
     def test_growth_unassessed_when_prior_year_missing_or_uncomputable(self):
         # Valid ratio, but base year (2018-19) with no prior-year record
-        assert self.classify_school(400, 20.0, "Reported", True, ratio=20.0, p90=25.0, has_prior_year_record=False, ratio_growth_pct=None, growth_gap_pp=None) == "Growth Unassessed / Incomplete Growth Data"
+        assert (
+            self.classify_school(
+                400,
+                20.0,
+                "Reported",
+                True,
+                ratio=20.0,
+                p90=25.0,
+                has_prior_year_record=False,
+                ratio_growth_pct=None,
+                growth_gap_pp=None,
+            )
+            == "Growth Unassessed / Incomplete Growth Data"
+        )
 
         # Prior year record exists, but prior-year FTE was zero or missing so growth could not be calculated
         # CRITICAL: Must evaluate to Growth Unassessed, NEVER fall through to Stable / Balanced!
-        assert self.classify_school(400, 20.0, "Reported", True, ratio=20.0, p90=25.0, has_prior_year_record=True, ratio_growth_pct=None, growth_gap_pp=None) == "Growth Unassessed / Incomplete Growth Data"
+        assert (
+            self.classify_school(
+                400,
+                20.0,
+                "Reported",
+                True,
+                ratio=20.0,
+                p90=25.0,
+                has_prior_year_record=True,
+                ratio_growth_pct=None,
+                growth_gap_pp=None,
+            )
+            == "Growth Unassessed / Incomplete Growth Data"
+        )
 
     def test_stable_balanced(self):
         # Valid ratio < P90, growth assessed, small gap
-        assert self.classify_school(400, 20.0, "Reported", True, ratio=20.0, p90=25.0, has_prior_year_record=True, ratio_growth_pct=2.0, growth_gap_pp=1.0) == "Stable / Balanced"
+        assert (
+            self.classify_school(
+                400,
+                20.0,
+                "Reported",
+                True,
+                ratio=20.0,
+                p90=25.0,
+                has_prior_year_record=True,
+                ratio_growth_pct=2.0,
+                growth_gap_pp=1.0,
+            )
+            == "Stable / Balanced"
+        )
 
     def test_provisional_thresholds_are_not_approved_policy(self, kpi_definitions_config: dict):
         tier_cfg = kpi_definitions_config["kpis"]["resource_pressure_tier"]["rules"]
@@ -550,7 +721,9 @@ class TestForecastingConfigContract:
         assert "drift" in models
         assert "moving_average_3yr" in models
 
-    def test_retrospective_projection_accuracy_limitation_and_backtests(self, forecasting_config: dict):
+    def test_retrospective_projection_accuracy_limitation_and_backtests(
+        self, forecasting_config: dict
+    ):
         fc = forecasting_config.get("forecasting", {})
         scope = fc.get("scope", {})
         framing = scope.get("timeframe_framing", "").lower()

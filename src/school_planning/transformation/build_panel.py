@@ -41,7 +41,11 @@ def build_single_year_panel(
     keys = list(join_keys)
 
     # 1. Validate key uniqueness on each input component
-    for name, df in [("directory", directory_df), ("staff", staff_df), ("membership", membership_df)]:
+    for name, df in [
+        ("directory", directory_df),
+        ("staff", staff_df),
+        ("membership", membership_df),
+    ]:
         key_res = validate_key_uniqueness(df, key_cols=keys, raise_on_error=False)
         if not key_res["valid"]:
             raise ValueError(f"Input {name} table has duplicate keys: {key_res['errors']}")
@@ -66,7 +70,9 @@ def build_single_year_panel(
         raise ValueError(f"Membership relationship validation failed: {mem_rel['errors']}")
 
     # 3. Select columns from target components to avoid collisions
-    staff_cols_to_merge = [c for c in staff_df.columns if c in keys or c not in directory_df.columns]
+    staff_cols_to_merge = [
+        c for c in staff_df.columns if c in keys or c not in directory_df.columns
+    ]
     staff_subset = staff_df[staff_cols_to_merge]
 
     # Perform left join with Staff
@@ -87,7 +93,9 @@ def build_single_year_panel(
     # Ensure zero duplicate keys in output panel
     panel_key_res = validate_key_uniqueness(panel, key_cols=keys, raise_on_error=False)
     if not panel_key_res["valid"]:
-        raise ValueError(f"Output panel violates composite key uniqueness: {panel_key_res['errors']}")
+        raise ValueError(
+            f"Output panel violates composite key uniqueness: {panel_key_res['errors']}"
+        )
 
     metrics = {
         "spine_rows": len(directory_df),
@@ -129,7 +137,11 @@ def build_longitudinal_panel(
     yearly_metrics = {}
 
     for d_df, s_df, m_df in zip(yearly_directories, yearly_staff, yearly_memberships, strict=True):
-        year_val = d_df["school_year"].iloc[0] if "school_year" in d_df.columns and not d_df.empty else "unknown"
+        year_val = (
+            d_df["school_year"].iloc[0]
+            if "school_year" in d_df.columns and not d_df.empty
+            else "unknown"
+        )
         p_df, m_dict = build_single_year_panel(d_df, s_df, m_df, join_keys=join_keys)
         yearly_panels.append(p_df)
         yearly_metrics[year_val] = m_dict
@@ -144,12 +156,18 @@ def build_longitudinal_panel(
     # Verify overall composite primary key uniqueness
     key_res = validate_key_uniqueness(full_panel, key_cols=list(join_keys), raise_on_error=False)
     if not key_res["valid"]:
-        raise ValueError(f"Longitudinal panel contains duplicate composite keys: {key_res['errors']}")
+        raise ValueError(
+            f"Longitudinal panel contains duplicate composite keys: {key_res['errors']}"
+        )
 
     overall_metrics = {
         "total_records": len(full_panel),
-        "total_unique_schools": full_panel["school_id"].nunique() if "school_id" in full_panel.columns else 0,
-        "school_years": sorted(full_panel["school_year"].unique().tolist()) if "school_year" in full_panel.columns else [],
+        "total_unique_schools": full_panel["school_id"].nunique()
+        if "school_id" in full_panel.columns
+        else 0,
+        "school_years": sorted(full_panel["school_year"].unique().tolist())
+        if "school_year" in full_panel.columns
+        else [],
         "yearly_metrics": yearly_metrics,
     }
 

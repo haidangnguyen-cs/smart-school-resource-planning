@@ -57,43 +57,47 @@ def summarize_distributions(
         missing_pct = round((n_missing / total_len * 100), 2) if total_len > 0 else 0.0
 
         if series.empty:
-            rows.append({
-                "metric": col,
-                "count": 0,
-                "missing_count": n_missing,
-                "missing_pct": missing_pct,
-                "mean": np.nan,
-                "std": np.nan,
-                "min": np.nan,
-                "p10": np.nan,
-                "p25": np.nan,
-                "median": np.nan,
-                "p75": np.nan,
-                "p90": np.nan,
-                "max": np.nan,
-                "iqr": np.nan,
-            })
+            rows.append(
+                {
+                    "metric": col,
+                    "count": 0,
+                    "missing_count": n_missing,
+                    "missing_pct": missing_pct,
+                    "mean": np.nan,
+                    "std": np.nan,
+                    "min": np.nan,
+                    "p10": np.nan,
+                    "p25": np.nan,
+                    "median": np.nan,
+                    "p75": np.nan,
+                    "p90": np.nan,
+                    "max": np.nan,
+                    "iqr": np.nan,
+                }
+            )
             continue
 
         q25 = float(series.quantile(0.25))
         q75 = float(series.quantile(0.75))
 
-        rows.append({
-            "metric": col,
-            "count": len(series),
-            "missing_count": n_missing,
-            "missing_pct": missing_pct,
-            "mean": round(float(series.mean()), 2),
-            "std": round(float(series.std()), 2),
-            "min": round(float(series.min()), 2),
-            "p10": round(float(series.quantile(0.10)), 2),
-            "p25": round(q25, 2),
-            "median": round(float(series.median()), 2),
-            "p75": round(q75, 2),
-            "p90": round(float(series.quantile(0.90)), 2),
-            "max": round(float(series.max()), 2),
-            "iqr": round(q75 - q25, 2),
-        })
+        rows.append(
+            {
+                "metric": col,
+                "count": len(series),
+                "missing_count": n_missing,
+                "missing_pct": missing_pct,
+                "mean": round(float(series.mean()), 2),
+                "std": round(float(series.std()), 2),
+                "min": round(float(series.min()), 2),
+                "p10": round(float(series.quantile(0.10)), 2),
+                "p25": round(q25, 2),
+                "median": round(float(series.median()), 2),
+                "p75": round(q75, 2),
+                "p90": round(float(series.quantile(0.90)), 2),
+                "max": round(float(series.max()), 2),
+                "iqr": round(q75 - q25, 2),
+            }
+        )
 
     return pd.DataFrame(rows).set_index("metric") if rows else pd.DataFrame()
 
@@ -164,12 +168,18 @@ def summarize_state_aggregates(
     if operational_only and operational_col in df.columns:
         data = df[df[operational_col].fillna(False).astype(bool)]
 
-    grouped = data.groupby([state_col, year_col], dropna=False).agg(
-        school_count=("school_id", "count"),
-        total_students=("total_students", "sum"),
-        total_teacher_fte=("teacher_fte", "sum"),
-        median_school_ratio=("student_teacher_ratio", "median"),
-    ).reset_index().sort_values([state_col, year_col]).reset_index(drop=True)
+    grouped = (
+        data.groupby([state_col, year_col], dropna=False)
+        .agg(
+            school_count=("school_id", "count"),
+            total_students=("total_students", "sum"),
+            total_teacher_fte=("teacher_fte", "sum"),
+            median_school_ratio=("student_teacher_ratio", "median"),
+        )
+        .reset_index()
+        .sort_values([state_col, year_col])
+        .reset_index(drop=True)
+    )
 
     grouped["system_student_teacher_ratio"] = np.where(
         grouped["total_teacher_fte"] > 0,

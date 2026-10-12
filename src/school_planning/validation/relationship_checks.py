@@ -38,7 +38,9 @@ def validate_spine_relationships(
         if missing_spine:
             errs.append(f"Join key(s) {missing_spine} missing from spine DataFrame.")
         if missing_target:
-            errs.append(f"Join key(s) {missing_target} missing from target '{target_name}' DataFrame.")
+            errs.append(
+                f"Join key(s) {missing_target} missing from target '{target_name}' DataFrame."
+            )
         if raise_on_error:
             raise KeyError("; ".join(errs))
         return {

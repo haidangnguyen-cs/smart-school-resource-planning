@@ -50,6 +50,7 @@ from school_planning.forecasting.scenarios import (
 # 1. Forecast Metric Calculation Tests
 # =============================================================================
 
+
 class TestForecastMetrics:
     """Test mathematical correctness and edge cases for evaluation metrics."""
 
@@ -109,6 +110,7 @@ class TestForecastMetrics:
 # =============================================================================
 # 2. Baseline Forecaster Heuristic Tests
 # =============================================================================
+
 
 class TestBaselineForecasters:
     """Test baseline heuristic forecasting logic."""
@@ -179,20 +181,25 @@ class TestBaselineForecasters:
         pred = predict_drift(history, horizon=1, years=years, target_year="2021-22")
         assert pred == pytest.approx(130.0)
 
-    def test_predict_moving_average_with_missing_interior_year_does_not_average_across_gap(self) -> None:
+    def test_predict_moving_average_with_missing_interior_year_does_not_average_across_gap(
+        self,
+    ) -> None:
         # Years: 2018-19 (100.0), 2019-20 (110.0), 2021-22 (130.0), missing 2020-21.
         # Window = 3.
         # Because 2020-21 is missing, the contiguous consecutive segment ending at 2021-22 is only [130.0].
         # It must NOT silently average across the gap to include 110.0 and 100.0.
         history = [100.0, 110.0, 130.0]
         years = ["2018-19", "2019-20", "2021-22"]
-        pred = predict_moving_average(history, window=3, horizon=1, years=years, target_year="2022-23")
+        pred = predict_moving_average(
+            history, window=3, horizon=1, years=years, target_year="2022-23"
+        )
         assert pred == pytest.approx(130.0)
 
 
 # =============================================================================
 # 3. Model Classes and Registry Tests
 # =============================================================================
+
 
 class TestModelAbstractions:
     """Test object-oriented model wrappers and configuration contract."""
@@ -235,21 +242,26 @@ class TestModelAbstractions:
 # 4. State Aggregation and Time Series Tests
 # =============================================================================
 
+
 class TestStateAggregation:
     """Test aggregation of school-level panel data into state time series."""
 
     @pytest.fixture
     def mock_panel(self) -> pd.DataFrame:
-        return pd.DataFrame({
-            "school_id": ["S1", "S2", "S3", "S1", "S2", "S3"],
-            "state_name": ["Texas", "Texas", "Texas", "Texas", "Texas", "Texas"],
-            "school_year": ["2018-19", "2018-19", "2018-19", "2019-20", "2019-20", "2019-20"],
-            "is_operational": [True, True, False, True, True, True],
-            "total_students": [500.0, 300.0, 200.0, 520.0, 310.0, 220.0],
-            "teacher_fte": [25.0, 15.0, 10.0, 26.0, 16.0, 11.0],
-        })
+        return pd.DataFrame(
+            {
+                "school_id": ["S1", "S2", "S3", "S1", "S2", "S3"],
+                "state_name": ["Texas", "Texas", "Texas", "Texas", "Texas", "Texas"],
+                "school_year": ["2018-19", "2018-19", "2018-19", "2019-20", "2019-20", "2019-20"],
+                "is_operational": [True, True, False, True, True, True],
+                "total_students": [500.0, 300.0, 200.0, 520.0, 310.0, 220.0],
+                "teacher_fte": [25.0, 15.0, 10.0, 26.0, 16.0, 11.0],
+            }
+        )
 
-    def test_aggregate_operational_only_filters_closed_schools(self, mock_panel: pd.DataFrame) -> None:
+    def test_aggregate_operational_only_filters_closed_schools(
+        self, mock_panel: pd.DataFrame
+    ) -> None:
         agg = aggregate_state_time_series(mock_panel, operational_only=True)
         # Year 2018-19: S1 (500) + S2 (300) = 800 (S3 is inactive False)
         # Year 2019-20: S1 (520) + S2 (310) + S3 (220) = 1050
@@ -277,14 +289,16 @@ class TestStateAggregation:
         # S1: both reported
         # S2: missing teacher_fte
         # S3: missing both students and teachers
-        panel = pd.DataFrame({
-            "school_id": ["S1", "S2", "S3"],
-            "state_name": ["Texas", "Texas", "Texas"],
-            "school_year": ["2021-22", "2021-22", "2021-22"],
-            "is_operational": [True, True, True],
-            "total_students": [500.0, 300.0, np.nan],
-            "teacher_fte": [25.0, np.nan, np.nan],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["S1", "S2", "S3"],
+                "state_name": ["Texas", "Texas", "Texas"],
+                "school_year": ["2021-22", "2021-22", "2021-22"],
+                "is_operational": [True, True, True],
+                "total_students": [500.0, 300.0, np.nan],
+                "teacher_fte": [25.0, np.nan, np.nan],
+            }
+        )
         agg = aggregate_state_time_series(panel, operational_only=True)
         assert len(agg) == 1
         row = agg.iloc[0]
@@ -308,14 +322,16 @@ class TestStateAggregation:
 
     def test_aggregate_zero_reporting_yields_nan_not_zero(self) -> None:
         # All operational schools in Guam for 2022-23 have missing teacher_fte
-        panel = pd.DataFrame({
-            "school_id": ["G1", "G2"],
-            "state_name": ["Guam", "Guam"],
-            "school_year": ["2022-23", "2022-23"],
-            "is_operational": [True, True],
-            "total_students": [400.0, 600.0],
-            "teacher_fte": [np.nan, np.nan],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["G1", "G2"],
+                "state_name": ["Guam", "Guam"],
+                "school_year": ["2022-23", "2022-23"],
+                "is_operational": [True, True],
+                "total_students": [400.0, 600.0],
+                "teacher_fte": [np.nan, np.nan],
+            }
+        )
         agg = aggregate_state_time_series(panel, operational_only=True)
         assert len(agg) == 1
         row = agg.iloc[0]
@@ -333,6 +349,7 @@ class TestStateAggregation:
 # =============================================================================
 # 5. Walk-Forward Backtesting Engine Tests
 # =============================================================================
+
 
 class TestWalkForwardBacktesting:
     """Test expanding window validation engine and fold structure."""
@@ -424,11 +441,13 @@ class TestWalkForwardBacktesting:
         ]
         df = pd.DataFrame(rows)
 
-        f1 = [{
-            "fold_id": "fold_1",
-            "train_years": ["2018-19", "2019-20", "2020-21"],
-            "test_year": "2021-22",
-        }]
+        f1 = [
+            {
+                "fold_id": "fold_1",
+                "train_years": ["2018-19", "2019-20", "2020-21"],
+                "test_year": "2021-22",
+            }
+        ]
 
         preds, _, exclusions = run_walk_forward_backtest(
             df,
@@ -458,11 +477,13 @@ class TestWalkForwardBacktesting:
         ]
         df = pd.DataFrame(rows)
 
-        f1 = [{
-            "fold_id": "fold_1",
-            "train_years": ["2018-19", "2019-20", "2020-21"],
-            "test_year": "2021-22",
-        }]
+        f1 = [
+            {
+                "fold_id": "fold_1",
+                "train_years": ["2018-19", "2019-20", "2020-21"],
+                "test_year": "2021-22",
+            }
+        ]
 
         preds, _, exclusions = run_walk_forward_backtest(
             df,
@@ -482,25 +503,31 @@ class TestWalkForwardBacktesting:
         # Entity B: partial reporting (80%)
         rows = []
         for yr in ["2018-19", "2019-20", "2020-21", "2021-22"]:
-            rows.append({
-                "state_name": "State_Complete",
-                "school_year": yr,
-                "total_students": 1000.0,
-                "total_students_reporting_coverage_pct": 100.0,
-            })
-            rows.append({
-                "state_name": "State_Partial",
-                "school_year": yr,
-                "total_students": 2000.0,
-                "total_students_reporting_coverage_pct": 80.0,
-            })
+            rows.append(
+                {
+                    "state_name": "State_Complete",
+                    "school_year": yr,
+                    "total_students": 1000.0,
+                    "total_students_reporting_coverage_pct": 100.0,
+                }
+            )
+            rows.append(
+                {
+                    "state_name": "State_Partial",
+                    "school_year": yr,
+                    "total_students": 2000.0,
+                    "total_students_reporting_coverage_pct": 80.0,
+                }
+            )
         df = pd.DataFrame(rows)
 
-        f1 = [{
-            "fold_id": "fold_1",
-            "train_years": ["2018-19", "2019-20", "2020-21"],
-            "test_year": "2021-22",
-        }]
+        f1 = [
+            {
+                "fold_id": "fold_1",
+                "train_years": ["2018-19", "2019-20", "2020-21"],
+                "test_year": "2021-22",
+            }
+        ]
 
         _, summary, _ = run_walk_forward_backtest(
             df,
@@ -528,17 +555,20 @@ class TestWalkForwardBacktesting:
 # 6. Scenario Projections and Staffing Demand Tests
 # =============================================================================
 
+
 class TestScenarioProjections:
     """Test retrospective 2023-24 scenario bands and implied staffing."""
 
     @pytest.fixture
     def mock_state_ts(self) -> pd.DataFrame:
-        return pd.DataFrame({
-            "state_name": ["Ohio", "Ohio", "Ohio"],
-            "school_year": ["2020-21", "2021-22", "2022-23"],
-            "total_students": [1_000_000.0, 1_010_000.0, 1_020_000.0],
-            "teacher_fte": [60_000.0, 60_500.0, 61_000.0],
-        })
+        return pd.DataFrame(
+            {
+                "state_name": ["Ohio", "Ohio", "Ohio"],
+                "school_year": ["2020-21", "2021-22", "2022-23"],
+                "total_students": [1_000_000.0, 1_010_000.0, 1_020_000.0],
+                "teacher_fte": [60_000.0, 60_500.0, 61_000.0],
+            }
+        )
 
     def test_generate_projection_scenarios_bands(self, mock_state_ts: pd.DataFrame) -> None:
         scenarios = generate_projection_scenarios(
@@ -591,13 +621,17 @@ class TestScenarioProjections:
         # Under +2% expansion (1,040,400 students), implied teachers = 1,040,400 / 16.7213... = 62,220.0 (+1,220 teachers)
         assert row["implied_teacher_fte_high_expansion_plus_2pct"] == pytest.approx(62_220.0)
 
-    def test_generate_projection_scenarios_flags_incomplete_history_lacking_latest_year(self) -> None:
+    def test_generate_projection_scenarios_flags_incomplete_history_lacking_latest_year(
+        self,
+    ) -> None:
         # State Alaska has historical observations ending in 2021-22 (lacking 2022-23)
-        df = pd.DataFrame({
-            "state_name": ["Alaska", "Alaska"],
-            "school_year": ["2020-21", "2021-22"],
-            "total_students": [130_000.0, 128_000.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state_name": ["Alaska", "Alaska"],
+                "school_year": ["2020-21", "2021-22"],
+                "total_students": [130_000.0, 128_000.0],
+            }
+        )
         scenarios = generate_projection_scenarios(
             df,
             target_col="total_students",
@@ -609,15 +643,19 @@ class TestScenarioProjections:
         assert row["latest_historical_year"] == "2021-22"
         assert "Incomplete" in row["projection_status"] and "2021-22" in row["projection_status"]
 
-    def test_generate_projection_scenarios_calculates_yoy_growth_only_on_consecutive_years(self) -> None:
+    def test_generate_projection_scenarios_calculates_yoy_growth_only_on_consecutive_years(
+        self,
+    ) -> None:
         # State has 2018-19 (100.0), 2019-20 (110.0), and 2022-23 (120.0)
         # 2018-19 -> 2019-20 is consecutive (+10.0%)
         # 2019-20 -> 2022-23 spans 3 years, so it must NOT be computed as a single-year YoY growth rate!
-        df = pd.DataFrame({
-            "state_name": ["Hawaii", "Hawaii", "Hawaii"],
-            "school_year": ["2018-19", "2019-20", "2022-23"],
-            "total_students": [100.0, 110.0, 120.0],
-        })
+        df = pd.DataFrame(
+            {
+                "state_name": ["Hawaii", "Hawaii", "Hawaii"],
+                "school_year": ["2018-19", "2019-20", "2022-23"],
+                "total_students": [100.0, 110.0, 120.0],
+            }
+        )
         scenarios = generate_projection_scenarios(
             df,
             target_col="total_students",
@@ -630,15 +668,19 @@ class TestScenarioProjections:
         assert row["hist_max_yoy_growth_pct"] == pytest.approx(10.0)
 
     def test_estimate_implied_staffing_demand_with_and_without_target_ratio(self) -> None:
-        scenarios = pd.DataFrame([{
-            "state_name": "State_X",
-            "projection_year": "2023-24",
-            "baseline_projection": 150_000.0,
-            "scenario_low_contraction_minus_2pct": 147_000.0,
-            "scenario_high_expansion_plus_2pct": 153_000.0,
-            "latest_historical_value": 150_000.0,
-            "latest_historical_teacher_fte": 10_000.0,
-        }])
+        scenarios = pd.DataFrame(
+            [
+                {
+                    "state_name": "State_X",
+                    "projection_year": "2023-24",
+                    "baseline_projection": 150_000.0,
+                    "scenario_low_contraction_minus_2pct": 147_000.0,
+                    "scenario_high_expansion_plus_2pct": 153_000.0,
+                    "latest_historical_value": 150_000.0,
+                    "latest_historical_teacher_fte": 10_000.0,
+                }
+            ]
+        )
 
         # Case 1: Without target_ratio (historical constant ratio only)
         staffing_historical = estimate_implied_staffing_demand(
@@ -669,12 +711,34 @@ class TestScenarioProjections:
     def test_generate_projection_scenarios_excludes_invalid_entity_from_projections(self) -> None:
         # Entity A: valid history ending in 2022-23 (100k students)
         # Entity B: stale history ending in 2020-21 (50k students)
-        df = pd.DataFrame([
-            {"state_name": "State_Valid", "school_year": "2021-22", "total_students": 98_000.0, "teacher_fte": 6_000.0},
-            {"state_name": "State_Valid", "school_year": "2022-23", "total_students": 100_000.0, "teacher_fte": 6_100.0},
-            {"state_name": "State_Stale", "school_year": "2019-20", "total_students": 52_000.0, "teacher_fte": 3_500.0},
-            {"state_name": "State_Stale", "school_year": "2020-21", "total_students": 50_000.0, "teacher_fte": 3_400.0},
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "state_name": "State_Valid",
+                    "school_year": "2021-22",
+                    "total_students": 98_000.0,
+                    "teacher_fte": 6_000.0,
+                },
+                {
+                    "state_name": "State_Valid",
+                    "school_year": "2022-23",
+                    "total_students": 100_000.0,
+                    "teacher_fte": 6_100.0,
+                },
+                {
+                    "state_name": "State_Stale",
+                    "school_year": "2019-20",
+                    "total_students": 52_000.0,
+                    "teacher_fte": 3_500.0,
+                },
+                {
+                    "state_name": "State_Stale",
+                    "school_year": "2020-21",
+                    "total_students": 50_000.0,
+                    "teacher_fte": 3_400.0,
+                },
+            ]
+        )
 
         scenarios = generate_projection_scenarios(
             df,
@@ -703,9 +767,15 @@ class TestScenarioProjections:
 
     def test_generate_projection_scenarios_one_observation_history_unassessed_growth(self) -> None:
         # Entity with only one historical observation in 2022-23
-        df = pd.DataFrame([
-            {"state_name": "State_OneObs", "school_year": "2022-23", "total_students": 50_000.0},
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "state_name": "State_OneObs",
+                    "school_year": "2022-23",
+                    "total_students": 50_000.0,
+                },
+            ]
+        )
 
         scenarios = generate_projection_scenarios(
             df,
@@ -734,6 +804,7 @@ class TestScenarioProjections:
 # 7. Pipeline Integration and Artifact Generation Tests
 # =============================================================================
 
+
 class TestForecastingPipelineExecution:
     """Test end-to-end execution of scripts/05_run_forecasting.py in isolated directory."""
 
@@ -742,7 +813,9 @@ class TestForecastingPipelineExecution:
         import importlib.util
         from pathlib import Path
 
-        script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "05_run_forecasting.py"
+        script_path = (
+            Path(__file__).resolve().parent.parent.parent / "scripts" / "05_run_forecasting.py"
+        )
         spec = importlib.util.spec_from_file_location("run_forecasting_mod", script_path)
         assert spec and spec.loader
         mod = importlib.util.module_from_spec(spec)
@@ -758,15 +831,17 @@ class TestForecastingPipelineExecution:
             for s_idx, state in enumerate(states):
                 for sch_idx in range(5):
                     sch_id = f"SCH_{s_idx}_{sch_idx}"
-                    records.append({
-                        "school_id": sch_id,
-                        "state_fips": f"{s_idx + 1:02d}",
-                        "state_name": state,
-                        "school_year": yr,
-                        "is_operational": True,
-                        "total_students": 500.0 + yr_idx * 10.0 + sch_idx * 50.0,
-                        "teacher_fte": 25.0 + yr_idx * 0.5 + sch_idx * 2.5,
-                    })
+                    records.append(
+                        {
+                            "school_id": sch_id,
+                            "state_fips": f"{s_idx + 1:02d}",
+                            "state_name": state,
+                            "school_year": yr,
+                            "is_operational": True,
+                            "total_students": 500.0 + yr_idx * 10.0 + sch_idx * 50.0,
+                            "teacher_fte": 25.0 + yr_idx * 0.5 + sch_idx * 2.5,
+                        }
+                    )
 
         panel_df = pd.DataFrame(records)
         panel_file = tmp_path / "test_panel.parquet"
@@ -844,19 +919,22 @@ class TestForecastingPipelineExecution:
 # 8. FIPS Entity Keying and Display Name Preservation Tests
 # =============================================================================
 
+
 class TestStateFIPSEntityKeyAndDisplayPreservation:
     """Test suite for canonical FIPS entity keying and display name preservation."""
 
     def test_state_aggregation_uses_fips_as_entity_key(self) -> None:
-        panel = pd.DataFrame({
-            "school_id": ["S1", "S2"],
-            "state_fips": ["06", "06"],
-            "state_name": ["California", "California"],
-            "school_year": ["2022-23", "2022-23"],
-            "is_operational": [True, True],
-            "total_students": [500.0, 700.0],
-            "teacher_fte": [25.0, 35.0],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["S1", "S2"],
+                "state_fips": ["06", "06"],
+                "state_name": ["California", "California"],
+                "school_year": ["2022-23", "2022-23"],
+                "is_operational": [True, True],
+                "total_students": [500.0, 700.0],
+                "teacher_fte": [25.0, 35.0],
+            }
+        )
         agg = aggregate_state_time_series(panel)
         assert len(agg) == 1
         assert "state_fips" in agg.columns
@@ -865,15 +943,17 @@ class TestStateFIPSEntityKeyAndDisplayPreservation:
         assert agg["teacher_fte"].iloc[0] == pytest.approx(60.0)
 
     def test_aggregation_preserves_display_names(self) -> None:
-        panel = pd.DataFrame({
-            "school_id": ["S1", "S2"],
-            "state_fips": ["48", "12"],
-            "state_name": ["Texas", "Florida"],
-            "school_year": ["2022-23", "2022-23"],
-            "is_operational": [True, True],
-            "total_students": [1000.0, 800.0],
-            "teacher_fte": [50.0, 40.0],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["S1", "S2"],
+                "state_fips": ["48", "12"],
+                "state_name": ["Texas", "Florida"],
+                "school_year": ["2022-23", "2022-23"],
+                "is_operational": [True, True],
+                "total_students": [1000.0, 800.0],
+                "teacher_fte": [50.0, 40.0],
+            }
+        )
         agg = aggregate_state_time_series(panel)
         assert len(agg) == 2
         assert "state_fips" in agg.columns
@@ -886,15 +966,17 @@ class TestStateFIPSEntityKeyAndDisplayPreservation:
 
     def test_same_fips_different_display_labels_remain_single_entity(self) -> None:
         # Records with the same FIPS code ("06") but varying display labels ("California" vs "Calif.")
-        panel = pd.DataFrame({
-            "school_id": ["S1", "S2"],
-            "state_fips": ["06", "06"],
-            "state_name": ["California", "Calif."],
-            "school_year": ["2022-23", "2022-23"],
-            "is_operational": [True, True],
-            "total_students": [500.0, 300.0],
-            "teacher_fte": [25.0, 15.0],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["S1", "S2"],
+                "state_fips": ["06", "06"],
+                "state_name": ["California", "Calif."],
+                "school_year": ["2022-23", "2022-23"],
+                "is_operational": [True, True],
+                "total_students": [500.0, 300.0],
+                "teacher_fte": [25.0, 15.0],
+            }
+        )
         agg = aggregate_state_time_series(panel)
         # MUST remain exactly 1 entity, not split by label
         assert len(agg) == 1
@@ -907,15 +989,17 @@ class TestStateFIPSEntityKeyAndDisplayPreservation:
 
     def test_distinct_fips_same_display_label_never_merge(self) -> None:
         # Records with distinct FIPS codes ("11" vs "99") but identical display label ("Special District")
-        panel = pd.DataFrame({
-            "school_id": ["S1", "S2"],
-            "state_fips": ["11", "99"],
-            "state_name": ["Special District", "Special District"],
-            "school_year": ["2022-23", "2022-23"],
-            "is_operational": [True, True],
-            "total_students": [400.0, 600.0],
-            "teacher_fte": [20.0, 30.0],
-        })
+        panel = pd.DataFrame(
+            {
+                "school_id": ["S1", "S2"],
+                "state_fips": ["11", "99"],
+                "state_name": ["Special District", "Special District"],
+                "school_year": ["2022-23", "2022-23"],
+                "is_operational": [True, True],
+                "total_students": [400.0, 600.0],
+                "teacher_fte": [20.0, 30.0],
+            }
+        )
         agg = aggregate_state_time_series(panel)
         # MUST remain 2 separate entities, NEVER merged because display labels match
         assert len(agg) == 2
@@ -934,20 +1018,24 @@ class TestStateFIPSEntityKeyAndDisplayPreservation:
         years = ["2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
         rows = []
         for yr_idx, yr in enumerate(years):
-            rows.append({
-                "state_fips": "06",
-                "state_name": "California",
-                "school_year": yr,
-                "total_students": 1000.0 + yr_idx * 20.0,
-                "teacher_fte": 50.0 + yr_idx * 1.0,
-            })
-            rows.append({
-                "state_fips": "48",
-                "state_name": "Texas",
-                "school_year": yr,
-                "total_students": 2000.0 + yr_idx * 30.0,
-                "teacher_fte": 100.0 + yr_idx * 1.5,
-            })
+            rows.append(
+                {
+                    "state_fips": "06",
+                    "state_name": "California",
+                    "school_year": yr,
+                    "total_students": 1000.0 + yr_idx * 20.0,
+                    "teacher_fte": 50.0 + yr_idx * 1.0,
+                }
+            )
+            rows.append(
+                {
+                    "state_fips": "48",
+                    "state_name": "Texas",
+                    "school_year": yr,
+                    "total_students": 2000.0 + yr_idx * 30.0,
+                    "teacher_fte": 100.0 + yr_idx * 1.5,
+                }
+            )
         series_df = pd.DataFrame(rows)
 
         # 1. Backtesting execution keyed on state_fips

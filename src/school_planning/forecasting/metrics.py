@@ -20,9 +20,7 @@ def _validate_and_align(
     yp = np.asarray(y_pred, dtype=float)
 
     if yt.shape != yp.shape:
-        raise ValueError(
-            f"Shape mismatch: y_true shape {yt.shape} != y_pred shape {yp.shape}"
-        )
+        raise ValueError(f"Shape mismatch: y_true shape {yt.shape} != y_pred shape {yp.shape}")
 
     if len(yt) == 0:
         raise ValueError("Cannot calculate metrics on empty input series.")

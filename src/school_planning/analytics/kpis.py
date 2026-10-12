@@ -37,8 +37,16 @@ def compute_student_teacher_ratio(
     Returns:
         pd.Series of float ratio values with invalid/zero cases coerced to NaN.
     """
-    students = pd.to_numeric(df[students_col], errors="coerce") if students_col in df.columns else pd.Series(np.nan, index=df.index)
-    teachers = pd.to_numeric(df[teachers_col], errors="coerce") if teachers_col in df.columns else pd.Series(np.nan, index=df.index)
+    students = (
+        pd.to_numeric(df[students_col], errors="coerce")
+        if students_col in df.columns
+        else pd.Series(np.nan, index=df.index)
+    )
+    teachers = (
+        pd.to_numeric(df[teachers_col], errors="coerce")
+        if teachers_col in df.columns
+        else pd.Series(np.nan, index=df.index)
+    )
 
     # Valid mask
     valid_students = students.notna() & (students >= 0)

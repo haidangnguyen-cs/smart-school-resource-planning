@@ -133,7 +133,11 @@ def stream_csv_chunks(
     if not path.exists():
         raise FileNotFoundError(f"Source file not found: {path}")
 
-    resolved_encoding = encoding if encoding is not None else determine_encoding(path, encoding_cascade=encoding_cascade)
+    resolved_encoding = (
+        encoding
+        if encoding is not None
+        else determine_encoding(path, encoding_cascade=encoding_cascade)
+    )
 
     reader = pd.read_csv(
         path,

@@ -112,9 +112,7 @@ def aggregate_state_time_series(
                 reported_count = int(valid_mask.sum())
                 missing_count = int((~valid_mask).sum())
                 coverage_pct = (
-                    round((reported_count / total_schools) * 100.0, 2)
-                    if total_schools > 0
-                    else 0.0
+                    round((reported_count / total_schools) * 100.0, 2) if total_schools > 0 else 0.0
                 )
 
                 if reported_count > 0:
@@ -195,7 +193,11 @@ def run_walk_forward_backtest(
 
     # Determine effective grouping key (allow fallback to display_col if entity_col missing from legacy mock)
     effective_entity_col = entity_col
-    if effective_entity_col not in aggregate_df.columns and display_col and display_col in aggregate_df.columns:
+    if (
+        effective_entity_col not in aggregate_df.columns
+        and display_col
+        and display_col in aggregate_df.columns
+    ):
         effective_entity_col = display_col
 
     # Build entity -> display name mapping if display_col is present
@@ -222,10 +224,7 @@ def run_walk_forward_backtest(
         test_data = aggregate_df[aggregate_df[year_col] == test_year]
 
         # Map test data by entity
-        test_records_by_entity = {
-            row[effective_entity_col]: row
-            for _, row in test_data.iterrows()
-        }
+        test_records_by_entity = {row[effective_entity_col]: row for _, row in test_data.iterrows()}
 
         # Unique entities observed across the aggregate dataset
         all_entities = sorted(aggregate_df[effective_entity_col].unique())
@@ -242,7 +241,11 @@ def run_walk_forward_backtest(
                     "entity_id": entity,
                     effective_entity_col: entity,
                 }
-                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                if (
+                    display_col
+                    and display_col in aggregate_df.columns
+                    and display_col != effective_entity_col
+                ):
                     excl_row[display_col] = disp_name
                 excl_row["target_col"] = target_col
                 excl_row["reason"] = f"No data recorded in test year {test_year}"
@@ -260,15 +263,23 @@ def run_walk_forward_backtest(
                     "entity_id": entity,
                     effective_entity_col: entity,
                 }
-                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                if (
+                    display_col
+                    and display_col in aggregate_df.columns
+                    and display_col != effective_entity_col
+                ):
                     excl_row[display_col] = disp_name
                 excl_row["target_col"] = target_col
-                excl_row["reason"] = f"No reported ground truth in test year {test_year} (actual value is null or zero)"
+                excl_row["reason"] = (
+                    f"No reported ground truth in test year {test_year} (actual value is null or zero)"
+                )
                 exclusion_records.append(excl_row)
                 continue
 
             # 2. Check training history
-            entity_train = train_data[train_data[effective_entity_col] == entity].sort_values(year_col)
+            entity_train = train_data[train_data[effective_entity_col] == entity].sort_values(
+                year_col
+            )
             valid_train = entity_train.dropna(subset=[target_col])
             valid_train = valid_train[valid_train[target_col] > 0.0]
 
@@ -279,7 +290,11 @@ def run_walk_forward_backtest(
                     "entity_id": entity,
                     effective_entity_col: entity,
                 }
-                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                if (
+                    display_col
+                    and display_col in aggregate_df.columns
+                    and display_col != effective_entity_col
+                ):
                     excl_row[display_col] = disp_name
                 excl_row["target_col"] = target_col
                 excl_row["reason"] = f"Zero valid reported training observations in {train_years}"
@@ -298,25 +313,30 @@ def run_walk_forward_backtest(
                     "entity_id": entity,
                     effective_entity_col: entity,
                 }
-                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                if (
+                    display_col
+                    and display_col in aggregate_df.columns
+                    and display_col != effective_entity_col
+                ):
                     excl_row[display_col] = disp_name
-                excl_row.update({
-                    "target_col": target_col,
-                    "expected_prior_year": expected_prior_year,
-                    "actual_latest_train_year": latest_train_year,
-                    "reason": (
-                        f"latest_train_year_gap: Missing immediate prior school year ({expected_prior_year}) "
-                        f"in training history; latest observed training year is {latest_train_year}."
-                    ),
-                })
+                excl_row.update(
+                    {
+                        "target_col": target_col,
+                        "expected_prior_year": expected_prior_year,
+                        "actual_latest_train_year": latest_train_year,
+                        "reason": (
+                            f"latest_train_year_gap: Missing immediate prior school year ({expected_prior_year}) "
+                            f"in training history; latest observed training year is {latest_train_year}."
+                        ),
+                    }
+                )
                 exclusion_records.append(excl_row)
                 continue
 
             # Check if training series has interior gaps
             year_ints = [school_year_to_start_year(y) for y in hist_years]
             has_interior_gaps = any(
-                year_ints[i] - year_ints[i - 1] > 1
-                for i in range(1, len(year_ints))
+                year_ints[i] - year_ints[i - 1] > 1 for i in range(1, len(year_ints))
             )
 
             # Evaluate each candidate model
@@ -341,21 +361,27 @@ def run_walk_forward_backtest(
                     "test_year": test_year,
                     effective_entity_col: entity,
                 }
-                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                if (
+                    display_col
+                    and display_col in aggregate_df.columns
+                    and display_col != effective_entity_col
+                ):
                     pred_row[display_col] = disp_name
-                pred_row.update({
-                    "target_col": target_col,
-                    "actual": float(actual_val),
-                    "model_name": model_name,
-                    "predicted": pred,
-                    "error": pred - actual_val if not np.isnan(pred) else np.nan,
-                    "abs_error": abs_err,
-                    "pct_error": pct_err,
-                    "train_years_used": ",".join(hist_years),
-                    "train_obs_count": len(hist_vals),
-                    "has_interior_gaps": has_interior_gaps,
-                    "test_coverage_pct": test_cov,
-                })
+                pred_row.update(
+                    {
+                        "target_col": target_col,
+                        "actual": float(actual_val),
+                        "model_name": model_name,
+                        "predicted": pred,
+                        "error": pred - actual_val if not np.isnan(pred) else np.nan,
+                        "abs_error": abs_err,
+                        "pct_error": pct_err,
+                        "train_years_used": ",".join(hist_years),
+                        "train_obs_count": len(hist_vals),
+                        "has_interior_gaps": has_interior_gaps,
+                        "test_coverage_pct": test_cov,
+                    }
+                )
                 pred_records.append(pred_row)
 
     pred_df = pd.DataFrame(pred_records)
@@ -382,27 +408,29 @@ def run_walk_forward_backtest(
         med_cov = float(round(cov_series.median(), 2)) if len(cov_series) > 0 else float(np.nan)
         mean_cov = float(round(cov_series.mean(), 2)) if len(cov_series) > 0 else float(np.nan)
 
-        summary_records.append({
-            "fold_id": fold_id,
-            "test_year": test_year,
-            "target_col": target_col,
-            "model_name": model_name,
-            "n_observations": len(valid_grp),
-            "n_complete_census_obs": n_complete,
-            "n_partial_coverage_obs": n_partial,
-            "min_coverage_pct": min_cov,
-            "median_coverage_pct": med_cov,
-            "mean_coverage_pct": mean_cov,
-            "evaluation_basis": "reported_value_aggregates",
-            "coverage_caution": (
-                "Evaluation evaluated against reported-value aggregates; "
-                "variations in reporting coverage across school years can influence measured errors."
-            ),
-            "mae": metrics["mae"],
-            "wape": metrics["wape"],
-            "mape": metrics["mape"],
-            "rmse": metrics["rmse"],
-        })
+        summary_records.append(
+            {
+                "fold_id": fold_id,
+                "test_year": test_year,
+                "target_col": target_col,
+                "model_name": model_name,
+                "n_observations": len(valid_grp),
+                "n_complete_census_obs": n_complete,
+                "n_partial_coverage_obs": n_partial,
+                "min_coverage_pct": min_cov,
+                "median_coverage_pct": med_cov,
+                "mean_coverage_pct": mean_cov,
+                "evaluation_basis": "reported_value_aggregates",
+                "coverage_caution": (
+                    "Evaluation evaluated against reported-value aggregates; "
+                    "variations in reporting coverage across school years can influence measured errors."
+                ),
+                "mae": metrics["mae"],
+                "wape": metrics["wape"],
+                "mape": metrics["mape"],
+                "rmse": metrics["rmse"],
+            }
+        )
 
     # Overall pooled cross-fold summary per model
     for model_name, grp in pred_df.groupby("model_name"):
@@ -418,31 +446,37 @@ def run_walk_forward_backtest(
         med_cov = float(round(cov_series.median(), 2)) if len(cov_series) > 0 else float(np.nan)
         mean_cov = float(round(cov_series.mean(), 2)) if len(cov_series) > 0 else float(np.nan)
 
-        summary_records.append({
-            "fold_id": "overall_pooled",
-            "test_year": "all_folds",
-            "target_col": target_col,
-            "model_name": model_name,
-            "n_observations": len(valid_grp),
-            "n_complete_census_obs": n_complete,
-            "n_partial_coverage_obs": n_partial,
-            "min_coverage_pct": min_cov,
-            "median_coverage_pct": med_cov,
-            "mean_coverage_pct": mean_cov,
-            "evaluation_basis": "reported_value_aggregates",
-            "coverage_caution": (
-                "Evaluation evaluated against reported-value aggregates; "
-                "variations in reporting coverage across school years can influence measured errors."
-            ),
-            "mae": metrics["mae"],
-            "wape": metrics["wape"],
-            "mape": metrics["mape"],
-            "rmse": metrics["rmse"],
-        })
+        summary_records.append(
+            {
+                "fold_id": "overall_pooled",
+                "test_year": "all_folds",
+                "target_col": target_col,
+                "model_name": model_name,
+                "n_observations": len(valid_grp),
+                "n_complete_census_obs": n_complete,
+                "n_partial_coverage_obs": n_partial,
+                "min_coverage_pct": min_cov,
+                "median_coverage_pct": med_cov,
+                "mean_coverage_pct": mean_cov,
+                "evaluation_basis": "reported_value_aggregates",
+                "coverage_caution": (
+                    "Evaluation evaluated against reported-value aggregates; "
+                    "variations in reporting coverage across school years can influence measured errors."
+                ),
+                "mae": metrics["mae"],
+                "wape": metrics["wape"],
+                "mape": metrics["mape"],
+                "rmse": metrics["rmse"],
+            }
+        )
 
     summary_df = pd.DataFrame(summary_records)
     sort_order = {"fold_1": 1, "fold_2": 2, "overall_pooled": 3}
     summary_df["sort_key"] = summary_df["fold_id"].map(sort_order).fillna(99)
-    summary_df = summary_df.sort_values(["sort_key", "model_name"]).drop(columns=["sort_key"]).reset_index(drop=True)
+    summary_df = (
+        summary_df.sort_values(["sort_key", "model_name"])
+        .drop(columns=["sort_key"])
+        .reset_index(drop=True)
+    )
 
     return pred_df, summary_df, exclusions_df

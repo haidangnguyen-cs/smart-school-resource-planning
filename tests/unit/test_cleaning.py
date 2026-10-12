@@ -85,12 +85,14 @@ class TestDataFrameIdentifierNormalization:
     """Tests for DataFrame-level identifier normalization."""
 
     def test_normalize_identifiers_dataframe(self):
-        df = pd.DataFrame({
-            "school_id": ["10000500871", "010000500879"],
-            "district_id": ["100005", "0100005"],
-            "state_fips": ["1", "01"],
-            "school_year": ["2018-2019", "2019-2020"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["10000500871", "010000500879"],
+                "district_id": ["100005", "0100005"],
+                "state_fips": ["1", "01"],
+                "school_year": ["2018-2019", "2019-2020"],
+            }
+        )
         normalized = normalize_identifiers_dataframe(df)
 
         assert normalized["school_id"].tolist() == ["010000500871", "010000500879"]
@@ -113,16 +115,27 @@ class TestMissingValuesAndSentinels:
         assert np.isnan(cleaned.iloc[5])
 
     def test_clean_teacher_fte(self):
-        df = pd.DataFrame({
-            "school_id": ["01001", "01002", "01003", "01004", "01005"],
-            "teacher_fte": [25.5, 0.0, 0.0, -1.0, 15.0],
-            "teacher_data_flag": ["Reported", "Reported", "Missing", "Reported", "Not reported"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002", "01003", "01004", "01005"],
+                "teacher_fte": [25.5, 0.0, 0.0, -1.0, 15.0],
+                "teacher_data_flag": [
+                    "Reported",
+                    "Reported",
+                    "Missing",
+                    "Reported",
+                    "Not reported",
+                ],
+            }
+        )
         cleaned = clean_teacher_fte(df)
 
         # 01001: positive reported
         assert cleaned.loc[0, "teacher_fte"] == 25.5
-        assert cleaned.loc[0, "zero_teacher_anomaly"] is False or cleaned.loc[0, "zero_teacher_anomaly"] == 0
+        assert (
+            cleaned.loc[0, "zero_teacher_anomaly"] is False
+            or cleaned.loc[0, "zero_teacher_anomaly"] == 0
+        )
 
         # 01002: valid reported zero -> preserved and flagged
         assert cleaned.loc[1, "teacher_fte"] == 0.0
@@ -139,11 +152,13 @@ class TestMissingValuesAndSentinels:
         assert np.isnan(cleaned.loc[4, "teacher_fte"])
 
     def test_clean_student_count(self):
-        df = pd.DataFrame({
-            "school_id": ["01001", "01002", "01003", "01004"],
-            "total_students": ["500", "0", "-1", "N/A"],
-            "enrollment_data_flag": ["Reported", "Reported", "Reported", "Missing"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002", "01003", "01004"],
+                "total_students": ["500", "0", "-1", "N/A"],
+                "enrollment_data_flag": ["Reported", "Reported", "Reported", "Missing"],
+            }
+        )
         cleaned = clean_student_count(df)
 
         assert cleaned.loc[0, "total_students"] == 500
@@ -156,29 +171,35 @@ class TestDuplicatesHandling:
     """Tests for duplicate detection and policy resolution."""
 
     def test_detect_duplicates(self):
-        df = pd.DataFrame({
-            "school_id": ["01001", "01001", "01002"],
-            "school_year": ["2018-19", "2018-19", "2018-19"],
-            "val": [1, 2, 3],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01001", "01002"],
+                "school_year": ["2018-19", "2018-19", "2018-19"],
+                "val": [1, 2, 3],
+            }
+        )
         dups = detect_duplicates(df, subset=("school_id", "school_year"))
         assert len(dups) == 2
         assert dups["school_id"].tolist() == ["01001", "01001"]
 
     def test_resolve_duplicates_fail_policy(self):
-        df = pd.DataFrame({
-            "school_id": ["01001", "01001", "01002"],
-            "school_year": ["2018-19", "2018-19", "2018-19"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01001", "01002"],
+                "school_year": ["2018-19", "2018-19", "2018-19"],
+            }
+        )
         with pytest.raises(ValueError, match="Detected 2 duplicate rows"):
             resolve_duplicates(df, subset=("school_id", "school_year"), policy="fail")
 
     def test_resolve_duplicates_drop_policy(self):
-        df = pd.DataFrame({
-            "school_id": ["01001", "01001", "01002"],
-            "school_year": ["2018-19", "2018-19", "2018-19"],
-            "val": [10, 20, 30],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01001", "01002"],
+                "school_year": ["2018-19", "2018-19", "2018-19"],
+                "val": [10, 20, 30],
+            }
+        )
         deduped = resolve_duplicates(df, subset=("school_id", "school_year"), policy="keep_first")
         assert len(deduped) == 2
         assert deduped.loc[deduped["school_id"] == "01001", "val"].iloc[0] == 10
@@ -188,19 +209,21 @@ class TestNormalizationAndScoping:
     """Tests for status classification, whitespace stripping, and charter normalization."""
 
     def test_classify_operational_status(self):
-        df = pd.DataFrame({
-            "school_status": [
-                "Open",
-                "New",
-                "Closed",
-                "Inactive",
-                "Future",
-                "Added",
-                "Changed Boundary/Agency",
-                "Reopened",
-                "Unknown Status",
-            ]
-        })
+        df = pd.DataFrame(
+            {
+                "school_status": [
+                    "Open",
+                    "New",
+                    "Closed",
+                    "Inactive",
+                    "Future",
+                    "Added",
+                    "Changed Boundary/Agency",
+                    "Reopened",
+                    "Unknown Status",
+                ]
+            }
+        )
         result = classify_operational_status(df)
 
         assert result["is_operational"].tolist() == [
@@ -238,10 +261,12 @@ class TestNormalizationAndScoping:
         assert np.isnan(result["is_charter"].iloc[4])
 
     def test_strip_whitespace(self):
-        df = pd.DataFrame({
-            "text": ["  hello ", "world  ", ""],
-            "num": [1, 2, 3],
-        })
+        df = pd.DataFrame(
+            {
+                "text": ["  hello ", "world  ", ""],
+                "num": [1, 2, 3],
+            }
+        )
         result = strip_whitespace(df)
         assert result["text"].iloc[0] == "hello"
         assert result["text"].iloc[1] == "world"
@@ -252,14 +277,16 @@ class TestCleaningPipelineOrchestration:
     """Tests for component-level cleaning pipeline orchestrators."""
 
     def test_clean_directory_dataframe(self):
-        df = pd.DataFrame({
-            "school_id": [" 10000500871 "],
-            "district_id": ["100005"],
-            "state_fips": ["1"],
-            "school_year": ["2018-2019"],
-            "school_status": [" Open "],
-            "is_charter": [" Yes "],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": [" 10000500871 "],
+                "district_id": ["100005"],
+                "state_fips": ["1"],
+                "school_year": ["2018-2019"],
+                "school_status": [" Open "],
+                "is_charter": [" Yes "],
+            }
+        )
         cleaned = clean_directory_dataframe(df)
         assert cleaned["school_id"].iloc[0] == "010000500871"
         assert cleaned["district_id"].iloc[0] == "0100005"
@@ -270,24 +297,28 @@ class TestCleaningPipelineOrchestration:
         assert bool(cleaned["is_charter"].iloc[0]) is True
 
     def test_clean_membership_dataframe(self):
-        df = pd.DataFrame({
-            "school_id": ["10000500871"],
-            "school_year": ["2018-2019"],
-            "total_students": [" 450 "],
-            "enrollment_data_flag": ["Reported"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["10000500871"],
+                "school_year": ["2018-2019"],
+                "total_students": [" 450 "],
+                "enrollment_data_flag": ["Reported"],
+            }
+        )
         cleaned = clean_membership_dataframe(df)
         assert cleaned["school_id"].iloc[0] == "010000500871"
         assert cleaned["school_year"].iloc[0] == "2018-19"
         assert cleaned["total_students"].iloc[0] == 450.0
 
     def test_clean_staff_dataframe(self):
-        df = pd.DataFrame({
-            "school_id": ["10000500871"],
-            "school_year": ["2018-2019"],
-            "teacher_fte": ["0.0"],
-            "teacher_data_flag": ["Reported"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["10000500871"],
+                "school_year": ["2018-2019"],
+                "teacher_fte": ["0.0"],
+                "teacher_data_flag": ["Reported"],
+            }
+        )
         cleaned = clean_staff_dataframe(df)
         assert cleaned["school_id"].iloc[0] == "010000500871"
         assert cleaned["school_year"].iloc[0] == "2018-19"
@@ -295,11 +326,13 @@ class TestCleaningPipelineOrchestration:
         assert bool(cleaned["zero_teacher_anomaly"].iloc[0]) is True
 
     def test_clean_component_routing(self):
-        df = pd.DataFrame({
-            "school_id": ["010000500871"],
-            "school_year": ["2018-19"],
-            "school_status": ["Open"],
-        })
+        df = pd.DataFrame(
+            {
+                "school_id": ["010000500871"],
+                "school_year": ["2018-19"],
+                "school_status": ["Open"],
+            }
+        )
         res = clean_component(df, "directory")
         assert "is_operational" in res.columns
 

@@ -60,7 +60,7 @@ def _clean_series_and_years(
         for i in range(1, len(valid_years)):
             if valid_years[i] <= valid_years[i - 1]:
                 raise ValueError(
-                    f"Years must be strictly ascending chronologically, got {valid_years[i-1]} followed by {valid_years[i]}."
+                    f"Years must be strictly ascending chronologically, got {valid_years[i - 1]} followed by {valid_years[i]}."
                 )
         return valid_vals, valid_years
 

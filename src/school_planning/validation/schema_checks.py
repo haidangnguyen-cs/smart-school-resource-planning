@@ -37,7 +37,9 @@ def validate_dataframe_schema(
             series = df[col]
             if exp_type in ("string", str):
                 # Verify non-null values are strings or object dtype
-                if not (pd.api.types.is_string_dtype(series) or pd.api.types.is_object_dtype(series)):
+                if not (
+                    pd.api.types.is_string_dtype(series) or pd.api.types.is_object_dtype(series)
+                ):
                     type_mismatches.append(f"{col}: expected string, got {series.dtype}")
             elif exp_type in ("numeric", float, int) and not pd.api.types.is_numeric_dtype(series):
                 type_mismatches.append(f"{col}: expected numeric, got {series.dtype}")

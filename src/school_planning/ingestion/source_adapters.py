@@ -27,14 +27,18 @@ def _load_column_mapping_config(mapping_path: Path | None = None) -> dict[str, A
     """Load column mapping configuration file."""
     if mapping_path is None:
         # Default relative to package root
-        mapping_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "column_mapping.yaml"
+        mapping_path = (
+            Path(__file__).resolve().parent.parent.parent.parent / "config" / "column_mapping.yaml"
+        )
     if mapping_path.exists():
         with open(mapping_path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
     return {}
 
 
-def _apply_mapping(df: pd.DataFrame, component_section: str, mapping_cfg: dict[str, Any] | None) -> pd.DataFrame:
+def _apply_mapping(
+    df: pd.DataFrame, component_section: str, mapping_cfg: dict[str, Any] | None
+) -> pd.DataFrame:
     """Rename columns according to the component mapping configuration."""
     if not mapping_cfg:
         return df

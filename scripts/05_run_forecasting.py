@@ -116,12 +116,19 @@ def run_forecasting_pipeline(
 
     # Canonical internal state entity key (FIPST -> state_fips) and display field (state_name)
     state_key_col = "state_fips" if "state_fips" in panel_df.columns else "state_name"
-    display_col = "state_name" if "state_name" in panel_df.columns and state_key_col != "state_name" else None
+    display_col = (
+        "state_name" if "state_name" in panel_df.columns and state_key_col != "state_name" else None
+    )
 
     all_states = sorted(panel_df[state_key_col].unique())
     fips_to_name: dict[Any, str] = {}
     if display_col:
-        fips_to_name = panel_df.dropna(subset=[display_col]).groupby(state_key_col)[display_col].first().to_dict()
+        fips_to_name = (
+            panel_df.dropna(subset=[display_col])
+            .groupby(state_key_col)[display_col]
+            .first()
+            .to_dict()
+        )
 
     logger.info(
         "Loaded panel: %d records across years: %s (%d states, entity key: %s)",
@@ -185,9 +192,9 @@ def run_forecasting_pipeline(
         "total_students": state_agg[state_agg["reported_total_students_count"] == 0][
             audit_cols
         ].to_dict(orient="records"),
-        "teacher_fte": state_agg[state_agg["reported_teacher_fte_count"] == 0][
-            audit_cols
-        ].to_dict(orient="records"),
+        "teacher_fte": state_agg[state_agg["reported_teacher_fte_count"] == 0][audit_cols].to_dict(
+            orient="records"
+        ),
     }
 
     # 3. Walk-Forward Backtesting
@@ -260,7 +267,9 @@ def run_forecasting_pipeline(
         .set_index(state_key_col)["teacher_fte"]
         .to_dict()
     )
-    proj_students["latest_historical_teacher_fte"] = proj_students[state_key_col].map(latest_teachers)
+    proj_students["latest_historical_teacher_fte"] = proj_students[state_key_col].map(
+        latest_teachers
+    )
 
     staffing_scenarios = estimate_implied_staffing_demand(
         proj_students,
@@ -371,7 +380,9 @@ def run_forecasting_pipeline(
             "excluded_entities_count": excluded_count,
             "excluded_entities": excluded_entities_info,
             "national_totals_coverage_scope": coverage_scope,
-            "national_total_baseline_students": float(valid_scenarios["baseline_projection"].dropna().sum()),
+            "national_total_baseline_students": float(
+                valid_scenarios["baseline_projection"].dropna().sum()
+            ),
             "national_total_scenario_low_minus_2pct": float(
                 valid_scenarios["scenario_low_contraction_minus_2pct"].dropna().sum()
             ),
@@ -383,7 +394,8 @@ def run_forecasting_pipeline(
             ),
             "national_implied_teacher_fte_policy_target": (
                 float(valid_scenarios["implied_teacher_fte_policy_target"].dropna().sum())
-                if policy_target_ratio is not None and valid_scenarios["implied_teacher_fte_policy_target"].notna().any()
+                if policy_target_ratio is not None
+                and valid_scenarios["implied_teacher_fte_policy_target"].notna().any()
                 else None
             ),
         },

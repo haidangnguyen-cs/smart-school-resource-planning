@@ -36,7 +36,11 @@ def strip_whitespace(
         DataFrame with stripped strings.
     """
     result = df.copy()
-    cols = string_cols if string_cols is not None else result.select_dtypes(include=["object", "string"]).columns
+    cols = (
+        string_cols
+        if string_cols is not None
+        else result.select_dtypes(include=["object", "string"]).columns
+    )
 
     for col in cols:
         if col in result.columns:

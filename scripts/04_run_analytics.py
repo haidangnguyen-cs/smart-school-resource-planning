@@ -86,7 +86,9 @@ def run_analytics_pipeline(
     reports_dir.mkdir(parents=True, exist_ok=True)
 
     if not panel_path.exists():
-        raise FileNotFoundError(f"Processed analytical panel not found at {panel_path}. Run 03_build_panel.py first.")
+        raise FileNotFoundError(
+            f"Processed analytical panel not found at {panel_path}. Run 03_build_panel.py first."
+        )
 
     logger.info("Loading analytical panel from %s...", panel_path)
     df = pd.read_parquet(panel_path)
@@ -104,7 +106,9 @@ def run_analytics_pipeline(
     df = compute_longitudinal_growth(df)
 
     # 3. Classify peer groups and calculate empirical P90 thresholds on operational cohort
-    logger.info("Calculating empirical peer-group P90 ratio baselines on active operational cohort...")
+    logger.info(
+        "Calculating empirical peer-group P90 ratio baselines on active operational cohort..."
+    )
     df, p90_thresholds = compute_peer_group_p90_thresholds(df)
 
     # 4. Classify facilities into 6-tier resource pressure hierarchy
@@ -165,20 +169,30 @@ def run_analytics_pipeline(
 
     # Save augmented panel back to processed directory (preserving all full panel rows)
     if augmented_panel_path is None:
-        augmented_panel_path = PROJECT_ROOT / "data" / "processed" / "school_year_panel_augmented.parquet"
+        augmented_panel_path = (
+            PROJECT_ROOT / "data" / "processed" / "school_year_panel_augmented.parquet"
+        )
     augmented_panel_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(augmented_panel_path, index=False)
     logger.info("Saved augmented panel to %s.", augmented_panel_path)
 
     # 7. Formulate empirical insights based on active operational cohort
-    operational_mask = df["is_operational"].fillna(False).astype(bool) if "is_operational" in df.columns else pd.Series(True, index=df.index)
+    operational_mask = (
+        df["is_operational"].fillna(False).astype(bool)
+        if "is_operational" in df.columns
+        else pd.Series(True, index=df.index)
+    )
     operational_df = df[operational_mask]
     operational_records = len(operational_df)
 
     valid_ratios = operational_df["student_teacher_ratio"].dropna()
     median_ratio = round(float(valid_ratios.median()), 2) if not valid_ratios.empty else 0.0
     mean_ratio = round(float(valid_ratios.mean()), 2) if not valid_ratios.empty else 0.0
-    iqr_ratio = round(float(valid_ratios.quantile(0.75) - valid_ratios.quantile(0.25)), 2) if not valid_ratios.empty else 0.0
+    iqr_ratio = (
+        round(float(valid_ratios.quantile(0.75) - valid_ratios.quantile(0.25)), 2)
+        if not valid_ratios.empty
+        else 0.0
+    )
     skewness_ratio = round(float(valid_ratios.skew()), 2) if len(valid_ratios) > 2 else 0.0
 
     # Mutually exclusive observation breakdown across the entire panel:
@@ -190,7 +204,11 @@ def run_analytics_pipeline(
         unbenchmarked_op_mask = df["peer_group_status"] == UNBENCHMARKED_STATUS_LABEL
         non_op_status_review_mask = df["peer_group_status"] == NON_OPERATIONAL_STATUS_LABEL
     else:
-        benchmarked_op_mask = df["is_p90_eligible"].fillna(False).astype(bool) if "is_p90_eligible" in df.columns else operational_mask
+        benchmarked_op_mask = (
+            df["is_p90_eligible"].fillna(False).astype(bool)
+            if "is_p90_eligible" in df.columns
+            else operational_mask
+        )
         unbenchmarked_op_mask = operational_mask & ~benchmarked_op_mask
         non_op_status_review_mask = ~operational_mask
 
@@ -198,17 +216,35 @@ def run_analytics_pipeline(
     unbenchmarked_op_obs_count = int(unbenchmarked_op_mask.sum())
     non_op_status_review_obs_count = int(non_op_status_review_mask.sum())
 
-    benchmarked_op_pct_of_operational = round(benchmarked_op_obs_count / operational_records * 100, 2) if operational_records > 0 else 0.0
-    unbenchmarked_op_pct_of_operational = round(unbenchmarked_op_obs_count / operational_records * 100, 2) if operational_records > 0 else 0.0
-    non_op_pct_of_panel = round(non_op_status_review_obs_count / total_records * 100, 2) if total_records > 0 else 0.0
+    benchmarked_op_pct_of_operational = (
+        round(benchmarked_op_obs_count / operational_records * 100, 2)
+        if operational_records > 0
+        else 0.0
+    )
+    unbenchmarked_op_pct_of_operational = (
+        round(unbenchmarked_op_obs_count / operational_records * 100, 2)
+        if operational_records > 0
+        else 0.0
+    )
+    non_op_pct_of_panel = (
+        round(non_op_status_review_obs_count / total_records * 100, 2) if total_records > 0 else 0.0
+    )
 
     # Unique school IDs observed in each category (may overlap across years if a school changes status)
     benchmarked_op_schools_count = int(df.loc[benchmarked_op_mask, "school_id"].nunique())
     unbenchmarked_op_schools_count = int(df.loc[unbenchmarked_op_mask, "school_id"].nunique())
-    non_op_status_review_schools_count = int(df.loc[non_op_status_review_mask, "school_id"].nunique())
+    non_op_status_review_schools_count = int(
+        df.loc[non_op_status_review_mask, "school_id"].nunique()
+    )
 
-    above_p90_obs_count = int(df["is_above_p90_ratio"].sum()) if "is_above_p90_ratio" in df.columns else 0
-    above_p90_schools_count = int(df.loc[df["is_above_p90_ratio"], "school_id"].nunique()) if "is_above_p90_ratio" in df.columns else 0
+    above_p90_obs_count = (
+        int(df["is_above_p90_ratio"].sum()) if "is_above_p90_ratio" in df.columns else 0
+    )
+    above_p90_schools_count = (
+        int(df.loc[df["is_above_p90_ratio"], "school_id"].nunique())
+        if "is_above_p90_ratio" in df.columns
+        else 0
+    )
 
     # Insight 1: Staffing ratio distribution baseline on active operational cohort
     insight_1 = (
@@ -337,15 +373,23 @@ def run_analytics_pipeline(
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(eda_summary, f, indent=2)
 
-    logger.info("EDA summary report written to %s in %.2fs.", report_path, eda_summary["elapsed_seconds"])
+    logger.info(
+        "EDA summary report written to %s in %.2fs.", report_path, eda_summary["elapsed_seconds"]
+    )
     return eda_summary
 
 
 def main():
     parser = argparse.ArgumentParser(description="Run EDA profiling and calculate core KPIs.")
-    parser.add_argument("--panel-path", type=Path, default=None, help="Path to school_year_panel.parquet")
-    parser.add_argument("--tables-dir", type=Path, default=None, help="Output directory for CSV tables")
-    parser.add_argument("--reports-dir", type=Path, default=None, help="Output directory for reports")
+    parser.add_argument(
+        "--panel-path", type=Path, default=None, help="Path to school_year_panel.parquet"
+    )
+    parser.add_argument(
+        "--tables-dir", type=Path, default=None, help="Output directory for CSV tables"
+    )
+    parser.add_argument(
+        "--reports-dir", type=Path, default=None, help="Output directory for reports"
+    )
     parser.add_argument(
         "--tau-ratio-rise",
         type=float,

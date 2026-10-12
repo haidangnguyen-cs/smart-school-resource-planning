@@ -117,9 +117,15 @@ def normalize_all_sources(
 
 def main():
     """CLI entry point for 02_normalize_data.py."""
-    parser = argparse.ArgumentParser(description="Normalize NCES CCD sources into interim Parquet files.")
-    parser.add_argument("--years", nargs="+", help="Specific school years to process (e.g. 2018-19).")
-    parser.add_argument("--components", nargs="+", help="Specific components (directory, membership, staff).")
+    parser = argparse.ArgumentParser(
+        description="Normalize NCES CCD sources into interim Parquet files."
+    )
+    parser.add_argument(
+        "--years", nargs="+", help="Specific school years to process (e.g. 2018-19)."
+    )
+    parser.add_argument(
+        "--components", nargs="+", help="Specific components (directory, membership, staff)."
+    )
     parser.add_argument("--output-dir", type=Path, help="Custom output directory.")
     args = parser.parse_args()
 

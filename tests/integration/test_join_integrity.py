@@ -59,63 +59,81 @@ class TestJoinIntegrityAndInvariants:
 
     def test_duplicate_in_target_fails_before_join(self):
         # Create directory spine
-        d_df = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "school_status": ["Open", "Open"],
-        })
+        d_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "school_status": ["Open", "Open"],
+            }
+        )
         # Create staff target with duplicate key
-        s_df = pd.DataFrame({
-            "school_id": ["01001", "01001"],  # Duplicate!
-            "school_year": ["2018-19", "2018-19"],
-            "teacher_fte": [20.0, 25.0],
-            "zero_teacher_anomaly": [False, False],
-        })
-        m_df = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "total_students": [300.0, 400.0],
-        })
+        s_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01001"],  # Duplicate!
+                "school_year": ["2018-19", "2018-19"],
+                "teacher_fte": [20.0, 25.0],
+                "zero_teacher_anomaly": [False, False],
+            }
+        )
+        m_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "total_students": [300.0, 400.0],
+            }
+        )
 
         with pytest.raises(ValueError, match="Input staff table has duplicate keys"):
             build_single_year_panel(d_df, s_df, m_df)
 
     def test_longitudinal_panel_multi_year_assembly(self):
         # Year 1
-        d1 = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "school_status": ["Open", "Open"],
-        })
-        s1 = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "teacher_fte": [20.0, 30.0],
-            "zero_teacher_anomaly": [False, False],
-        })
-        m1 = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "total_students": [300.0, 450.0],
-        })
+        d1 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "school_status": ["Open", "Open"],
+            }
+        )
+        s1 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "teacher_fte": [20.0, 30.0],
+                "zero_teacher_anomaly": [False, False],
+            }
+        )
+        m1 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "total_students": [300.0, 450.0],
+            }
+        )
 
         # Year 2
-        d2 = pd.DataFrame({
-            "school_id": ["01001", "01002", "01003"],
-            "school_year": ["2019-20", "2019-20", "2019-20"],
-            "school_status": ["Open", "Open", "New"],
-        })
-        s2 = pd.DataFrame({
-            "school_id": ["01001", "01002", "01003"],
-            "school_year": ["2019-20", "2019-20", "2019-20"],
-            "teacher_fte": [21.0, 30.0, 15.0],
-            "zero_teacher_anomaly": [False, False, False],
-        })
-        m2 = pd.DataFrame({
-            "school_id": ["01001", "01002", "01003"],
-            "school_year": ["2019-20", "2019-20", "2019-20"],
-            "total_students": [320.0, 450.0, 200.0],
-        })
+        d2 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002", "01003"],
+                "school_year": ["2019-20", "2019-20", "2019-20"],
+                "school_status": ["Open", "Open", "New"],
+            }
+        )
+        s2 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002", "01003"],
+                "school_year": ["2019-20", "2019-20", "2019-20"],
+                "teacher_fte": [21.0, 30.0, 15.0],
+                "zero_teacher_anomaly": [False, False, False],
+            }
+        )
+        m2 = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002", "01003"],
+                "school_year": ["2019-20", "2019-20", "2019-20"],
+                "total_students": [320.0, 450.0, 200.0],
+            }
+        )
 
         full_panel, metrics = build_longitudinal_panel(
             yearly_directories=[d1, d2],
@@ -130,22 +148,28 @@ class TestJoinIntegrityAndInvariants:
         assert not full_panel.duplicated(subset=["school_id", "school_year"]).any()
 
     def test_parquet_serialization_and_reloading(self, tmp_path):
-        d_df = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "school_status": ["Open", "Open"],
-        })
-        s_df = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "teacher_fte": [20.0, 30.0],
-            "zero_teacher_anomaly": [False, False],
-        })
-        m_df = pd.DataFrame({
-            "school_id": ["01001", "01002"],
-            "school_year": ["2018-19", "2018-19"],
-            "total_students": [300.0, np.nan],
-        })
+        d_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "school_status": ["Open", "Open"],
+            }
+        )
+        s_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "teacher_fte": [20.0, 30.0],
+                "zero_teacher_anomaly": [False, False],
+            }
+        )
+        m_df = pd.DataFrame(
+            {
+                "school_id": ["01001", "01002"],
+                "school_year": ["2018-19", "2018-19"],
+                "total_students": [300.0, np.nan],
+            }
+        )
 
         panel, _ = build_single_year_panel(d_df, s_df, m_df)
         out_pq = tmp_path / "test_panel.parquet"
@@ -158,10 +182,12 @@ class TestJoinIntegrityAndInvariants:
         assert reloaded["school_id"].tolist() == ["01001", "01002"]
 
     def test_transform_membership_missing_indicator_raises(self):
-        bad_df = pd.DataFrame({
-            "school_id": ["01001"],
-            "school_year": ["2018-19"],
-            "total_students": [300.0],
-        })
+        bad_df = pd.DataFrame(
+            {
+                "school_id": ["01001"],
+                "school_year": ["2018-19"],
+                "total_students": [300.0],
+            }
+        )
         with pytest.raises(KeyError, match="missing indicator column"):
             transform_membership(bad_df)

@@ -17,11 +17,31 @@ from school_planning.forecasting.baselines import school_year_to_start_year
 from school_planning.forecasting.models import get_forecaster
 
 DEFAULT_SCENARIO_BANDS: list[dict[str, Any]] = [
-    {"label": "low_contraction_minus_2pct", "pct_shift": -2.0, "description": "Contraction band (-2.0%)"},
-    {"label": "mild_contraction_minus_1pct", "pct_shift": -1.0, "description": "Mild contraction (-1.0%)"},
-    {"label": "baseline_projection", "pct_shift": 0.0, "description": "Model baseline point projection"},
-    {"label": "mild_expansion_plus_1pct", "pct_shift": 1.0, "description": "Mild expansion (+1.0%)"},
-    {"label": "high_expansion_plus_2pct", "pct_shift": 2.0, "description": "Expansion band (+2.0%)"},
+    {
+        "label": "low_contraction_minus_2pct",
+        "pct_shift": -2.0,
+        "description": "Contraction band (-2.0%)",
+    },
+    {
+        "label": "mild_contraction_minus_1pct",
+        "pct_shift": -1.0,
+        "description": "Mild contraction (-1.0%)",
+    },
+    {
+        "label": "baseline_projection",
+        "pct_shift": 0.0,
+        "description": "Model baseline point projection",
+    },
+    {
+        "label": "mild_expansion_plus_1pct",
+        "pct_shift": 1.0,
+        "description": "Mild expansion (+1.0%)",
+    },
+    {
+        "label": "high_expansion_plus_2pct",
+        "pct_shift": 2.0,
+        "description": "Expansion band (+2.0%)",
+    },
 ]
 
 
@@ -63,7 +83,11 @@ def generate_projection_scenarios(
 
     # Determine effective grouping key (allow fallback to display_col if entity_col missing from legacy mock)
     effective_entity_col = entity_col
-    if effective_entity_col not in aggregate_df.columns and display_col and display_col in aggregate_df.columns:
+    if (
+        effective_entity_col not in aggregate_df.columns
+        and display_col
+        and display_col in aggregate_df.columns
+    ):
         effective_entity_col = display_col
 
     # Build entity -> display name mapping if display_col is present
@@ -98,13 +122,14 @@ def generate_projection_scenarios(
         if is_latest_year_valid:
             history_status = f"Complete (through {latest_year})"
         else:
-            history_status = f"Incomplete: latest observed year is {latest_year}, not {expected_latest_year}"
+            history_status = (
+                f"Incomplete: latest observed year is {latest_year}, not {expected_latest_year}"
+            )
 
         # Check for temporal gaps in history
         year_ints = [school_year_to_start_year(y) for y in history_years]
         has_temporal_gaps = any(
-            year_ints[i] - year_ints[i - 1] > 1
-            for i in range(1, len(year_ints))
+            year_ints[i] - year_ints[i - 1] > 1 for i in range(1, len(year_ints))
         )
 
         # Compute strictly consecutive annual YoY growth rates
@@ -151,28 +176,34 @@ def generate_projection_scenarios(
         row: dict[str, Any] = {
             effective_entity_col: entity,
         }
-        if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+        if (
+            display_col
+            and display_col in aggregate_df.columns
+            and display_col != effective_entity_col
+        ):
             row[display_col] = disp_name
 
-        row.update({
-            "target_col": target_col,
-            "projection_year": target_projection_year,
-            "model_applied": model_name,
-            "latest_historical_year": latest_year,
-            "is_latest_year_valid": is_latest_year_valid,
-            "history_status": history_status,
-            "projection_status": history_status,
-            "years_observed_count": len(history),
-            "has_temporal_gaps": has_temporal_gaps,
-            "consecutive_yoy_intervals_count": len(consecutive_growths),
-            "latest_historical_value": latest_actual,
-            "baseline_projection": base_pred,
-            "hist_min_yoy_growth_pct": min_hist_growth,
-            "hist_max_yoy_growth_pct": max_hist_growth,
-            "hist_avg_yoy_growth_pct": avg_hist_growth,
-            "scenario_hist_min_bound": final_hist_min_bound,
-            "scenario_hist_max_bound": final_hist_max_bound,
-        })
+        row.update(
+            {
+                "target_col": target_col,
+                "projection_year": target_projection_year,
+                "model_applied": model_name,
+                "latest_historical_year": latest_year,
+                "is_latest_year_valid": is_latest_year_valid,
+                "history_status": history_status,
+                "projection_status": history_status,
+                "years_observed_count": len(history),
+                "has_temporal_gaps": has_temporal_gaps,
+                "consecutive_yoy_intervals_count": len(consecutive_growths),
+                "latest_historical_value": latest_actual,
+                "baseline_projection": base_pred,
+                "hist_min_yoy_growth_pct": min_hist_growth,
+                "hist_max_yoy_growth_pct": max_hist_growth,
+                "hist_avg_yoy_growth_pct": avg_hist_growth,
+                "scenario_hist_min_bound": final_hist_min_bound,
+                "scenario_hist_max_bound": final_hist_max_bound,
+            }
+        )
 
         # Compute scenario bands relative to baseline projection
         for band in scenario_bands:

@@ -17,8 +17,16 @@ def validate_teacher_fte_rules(df: pd.DataFrame) -> dict[str, Any]:
     warnings = []
     anomalies = {}
 
-    fte_col = "teacher_fte" if "teacher_fte" in df.columns else ("TEACHERS" if "TEACHERS" in df.columns else None)
-    flag_col = "teacher_data_flag" if "teacher_data_flag" in df.columns else ("DMS_FLAG" if "DMS_FLAG" in df.columns else None)
+    fte_col = (
+        "teacher_fte"
+        if "teacher_fte" in df.columns
+        else ("TEACHERS" if "TEACHERS" in df.columns else None)
+    )
+    flag_col = (
+        "teacher_data_flag"
+        if "teacher_data_flag" in df.columns
+        else ("DMS_FLAG" if "DMS_FLAG" in df.columns else None)
+    )
 
     if fte_col is None:
         return {"checked": False, "reason": "No teacher FTE column present"}
@@ -64,7 +72,8 @@ def validate_student_enrollment_rules(df: pd.DataFrame) -> dict[str, Any]:
     warnings = []
 
     enrollment_col = (
-        "total_students" if "total_students" in df.columns
+        "total_students"
+        if "total_students" in df.columns
         else ("STUDENT_COUNT" if "STUDENT_COUNT" in df.columns else None)
     )
 
@@ -92,7 +101,8 @@ def validate_student_enrollment_rules(df: pd.DataFrame) -> dict[str, Any]:
 def validate_status_scoping_rules(df: pd.DataFrame) -> dict[str, Any]:
     """Validate operational status distributions and verify transition statuses."""
     status_col = (
-        "school_status" if "school_status" in df.columns
+        "school_status"
+        if "school_status" in df.columns
         else ("SY_STATUS_TEXT" if "SY_STATUS_TEXT" in df.columns else None)
     )
     if status_col is None:

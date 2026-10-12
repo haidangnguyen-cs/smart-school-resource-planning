@@ -64,33 +64,39 @@ class TestAuditScriptFailurePaths:
         raw_dir = dummy_project / "data" / "raw"
 
         # Directory missing required column 'school_status'
-        df_dir = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "LEAID": ["0100005"],
-            "FIPST": ["01"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "SCH_NAME": ["Test School"],
-            # missing SY_STATUS_TEXT / school_status
-        })
+        df_dir = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "LEAID": ["0100005"],
+                "FIPST": ["01"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "SCH_NAME": ["Test School"],
+                # missing SY_STATUS_TEXT / school_status
+            }
+        )
         df_dir.to_csv(raw_dir / "dir_1819.csv", index=False)
 
         # Valid staff and membership
-        df_staff = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "TEACHERS": [10.0],
-            "DMS_FLAG": ["Reported"],
-            "TOTAL_INDICATOR": ["Education Unit Total"],
-        })
+        df_staff = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "TEACHERS": [10.0],
+                "DMS_FLAG": ["Reported"],
+                "TOTAL_INDICATOR": ["Education Unit Total"],
+            }
+        )
         df_staff.to_csv(raw_dir / "staff_1819.csv", index=False)
 
-        df_mem = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "STUDENT_COUNT": [100],
-            "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
-            "DMS_FLAG": ["Reported"],
-        })
+        df_mem = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "STUDENT_COUNT": [100],
+                "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
+                "DMS_FLAG": ["Reported"],
+            }
+        )
         df_mem.to_csv(raw_dir / "mem_1819.csv", index=False)
 
         res = run_source_audit(project_root=dummy_project, years=["2018-19"], write_reports=False)
@@ -102,33 +108,39 @@ class TestAuditScriptFailurePaths:
         raw_dir = dummy_project / "data" / "raw"
 
         # Valid Directory
-        df_dir = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "LEAID": ["0100005"],
-            "FIPST": ["01"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "SCH_NAME": ["Test School"],
-            "SY_STATUS_TEXT": ["Open"],
-        })
+        df_dir = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "LEAID": ["0100005"],
+                "FIPST": ["01"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "SCH_NAME": ["Test School"],
+                "SY_STATUS_TEXT": ["Open"],
+            }
+        )
         df_dir.to_csv(raw_dir / "dir_1819.csv", index=False)
 
         # Staff with DUPLICATE join keys (violates 1:0..1 cardinality contract)
-        df_staff = pd.DataFrame({
-            "NCESSCH": ["010000500871", "010000500871"],
-            "SCHOOL_YEAR": ["2018-2019", "2018-2019"],
-            "TEACHERS": [10.0, 12.0],
-            "DMS_FLAG": ["Reported", "Reported"],
-            "TOTAL_INDICATOR": ["Education Unit Total", "Education Unit Total"],
-        })
+        df_staff = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871", "010000500871"],
+                "SCHOOL_YEAR": ["2018-2019", "2018-2019"],
+                "TEACHERS": [10.0, 12.0],
+                "DMS_FLAG": ["Reported", "Reported"],
+                "TOTAL_INDICATOR": ["Education Unit Total", "Education Unit Total"],
+            }
+        )
         df_staff.to_csv(raw_dir / "staff_1819.csv", index=False)
 
-        df_mem = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "STUDENT_COUNT": [100],
-            "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
-            "DMS_FLAG": ["Reported"],
-        })
+        df_mem = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "STUDENT_COUNT": [100],
+                "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
+                "DMS_FLAG": ["Reported"],
+            }
+        )
         df_mem.to_csv(raw_dir / "mem_1819.csv", index=False)
 
         res = run_source_audit(project_root=dummy_project, years=["2018-19"], write_reports=False)
@@ -140,32 +152,38 @@ class TestAuditScriptFailurePaths:
         raw_dir = dummy_project / "data" / "raw"
 
         # Directory file missing NCESSCH primary key column entirely
-        df_dir = pd.DataFrame({
-            "LEAID": ["0100005"],
-            "FIPST": ["01"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "SCH_NAME": ["Test School Without NCESSCH"],
-            "SY_STATUS_TEXT": ["Open"],
-        })
+        df_dir = pd.DataFrame(
+            {
+                "LEAID": ["0100005"],
+                "FIPST": ["01"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "SCH_NAME": ["Test School Without NCESSCH"],
+                "SY_STATUS_TEXT": ["Open"],
+            }
+        )
         df_dir.to_csv(raw_dir / "dir_1819.csv", index=False)
 
         # Valid staff and membership
-        df_staff = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "TEACHERS": [10.0],
-            "DMS_FLAG": ["Reported"],
-            "TOTAL_INDICATOR": ["Education Unit Total"],
-        })
+        df_staff = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "TEACHERS": [10.0],
+                "DMS_FLAG": ["Reported"],
+                "TOTAL_INDICATOR": ["Education Unit Total"],
+            }
+        )
         df_staff.to_csv(raw_dir / "staff_1819.csv", index=False)
 
-        df_mem = pd.DataFrame({
-            "NCESSCH": ["010000500871"],
-            "SCHOOL_YEAR": ["2018-2019"],
-            "STUDENT_COUNT": [100],
-            "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
-            "DMS_FLAG": ["Reported"],
-        })
+        df_mem = pd.DataFrame(
+            {
+                "NCESSCH": ["010000500871"],
+                "SCHOOL_YEAR": ["2018-2019"],
+                "STUDENT_COUNT": [100],
+                "TOTAL_INDICATOR": ["Derived - Education Unit Total minus Adult Education Count"],
+                "DMS_FLAG": ["Reported"],
+            }
+        )
         df_mem.to_csv(raw_dir / "mem_1819.csv", index=False)
 
         res = run_source_audit(project_root=dummy_project, years=["2018-19"], write_reports=False)

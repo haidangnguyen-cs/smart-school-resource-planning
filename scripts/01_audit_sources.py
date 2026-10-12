@@ -52,7 +52,9 @@ def run_source_audit(
         manifest.save_json(manifest_path)
         # Also save inventory mirror for backward compatibility with existing inventory consumers
         manifest.save_json(reports_dir / "source_inventory.json")
-    logger.info("Manifest generated with %d files in %.2fs", len(manifest.entries), time.time() - start_t)
+    logger.info(
+        "Manifest generated with %d files in %.2fs", len(manifest.entries), time.time() - start_t
+    )
 
     # Years to evaluate
     if years is None:
@@ -61,7 +63,10 @@ def run_source_audit(
     year_summaries = {}
     overall_errors = []
 
-    logger.info("Step 2: Auditing components and join relationships across all %d school years...", len(years))
+    logger.info(
+        "Step 2: Auditing components and join relationships across all %d school years...",
+        len(years),
+    )
 
     for year in years:
         logger.info("Auditing School Year: %s", year)
@@ -69,15 +74,27 @@ def run_source_audit(
 
         # Locate raw files
         dir_file = next(
-            (e.relative_path for e in manifest.entries if e.component == "directory" and e.school_year == year),
+            (
+                e.relative_path
+                for e in manifest.entries
+                if e.component == "directory" and e.school_year == year
+            ),
             None,
         )
         staff_file = next(
-            (e.relative_path for e in manifest.entries if e.component == "staff" and e.school_year == year),
+            (
+                e.relative_path
+                for e in manifest.entries
+                if e.component == "staff" and e.school_year == year
+            ),
             None,
         )
         mem_file = next(
-            (e.relative_path for e in manifest.entries if e.component == "membership" and e.school_year == year),
+            (
+                e.relative_path
+                for e in manifest.entries
+                if e.component == "membership" and e.school_year == year
+            ),
             None,
         )
 
@@ -90,7 +107,14 @@ def run_source_audit(
             dir_df = load_directory_component(full_path)
             schema_res = validate_dataframe_schema(
                 dir_df,
-                required_columns=["school_id", "district_id", "state_fips", "school_year", "school_name", "school_status"],
+                required_columns=[
+                    "school_id",
+                    "district_id",
+                    "state_fips",
+                    "school_year",
+                    "school_name",
+                    "school_status",
+                ],
             )
             has_dir_keys = all(col in dir_df.columns for col in ["school_id", "school_year"])
             if has_dir_keys:
@@ -108,7 +132,9 @@ def run_source_audit(
                 "schema_valid": schema_res["valid"],
                 "key_valid": key_res["valid"],
                 "duplicates": key_res["duplicate_rows_count"],
-                "status_distribution": biz_res.get("status_checks", {}).get("status_distribution", {}),
+                "status_distribution": biz_res.get("status_checks", {}).get(
+                    "status_distribution", {}
+                ),
             }
             if not schema_res["valid"]:
                 overall_errors.extend(schema_res["errors"])
@@ -144,8 +170,12 @@ def run_source_audit(
                 "schema_valid": schema_res["valid"],
                 "key_valid": key_res["valid"],
                 "duplicates": key_res["duplicate_rows_count"],
-                "zero_teacher_anomalies": int(staff_df["zero_teacher_anomaly"].sum()) if "zero_teacher_anomaly" in staff_df.columns else 0,
-                "missing_teacher_fte": int(staff_df["teacher_fte"].isna().sum()) if "teacher_fte" in staff_df.columns else 0,
+                "zero_teacher_anomalies": int(staff_df["zero_teacher_anomaly"].sum())
+                if "zero_teacher_anomaly" in staff_df.columns
+                else 0,
+                "missing_teacher_fte": int(staff_df["teacher_fte"].isna().sum())
+                if "teacher_fte" in staff_df.columns
+                else 0,
             }
             if not schema_res["valid"]:
                 overall_errors.extend(schema_res["errors"])
@@ -163,7 +193,12 @@ def run_source_audit(
             mem_df = load_membership_component(full_path)
             schema_res = validate_dataframe_schema(
                 mem_df,
-                required_columns=["school_id", "school_year", "total_students", "enrollment_total_indicator"],
+                required_columns=[
+                    "school_id",
+                    "school_year",
+                    "total_students",
+                    "enrollment_total_indicator",
+                ],
             )
             has_mem_keys = all(col in mem_df.columns for col in ["school_id", "school_year"])
             if has_mem_keys:
@@ -181,7 +216,9 @@ def run_source_audit(
                 "schema_valid": schema_res["valid"],
                 "key_valid": key_res["valid"],
                 "duplicates": key_res["duplicate_rows_count"],
-                "missing_students": biz_res.get("student_checks", {}).get("missing_enrollment_count", 0),
+                "missing_students": biz_res.get("student_checks", {}).get(
+                    "missing_enrollment_count", 0
+                ),
                 "zero_students": biz_res.get("student_checks", {}).get("zero_enrollment_count", 0),
             }
             if not schema_res["valid"]:
@@ -211,7 +248,9 @@ def run_source_audit(
             if not rel_staff["valid"]:
                 overall_errors.extend(rel_staff["errors"])
         else:
-            overall_errors.append(f"[{year}] Cannot validate spine vs staff relationship: missing Directory or Staff key columns/data.")
+            overall_errors.append(
+                f"[{year}] Cannot validate spine vs staff relationship: missing Directory or Staff key columns/data."
+            )
             year_entry["spine_vs_staff"] = {"cardinality_valid": False, "match_rate_pct": 0.0}
 
         can_check_mem_rel = (
@@ -233,7 +272,9 @@ def run_source_audit(
             if not rel_mem["valid"]:
                 overall_errors.extend(rel_mem["errors"])
         else:
-            overall_errors.append(f"[{year}] Cannot validate spine vs membership relationship: missing Directory or Membership key columns/data.")
+            overall_errors.append(
+                f"[{year}] Cannot validate spine vs membership relationship: missing Directory or Membership key columns/data."
+            )
             year_entry["spine_vs_membership"] = {"cardinality_valid": False, "match_rate_pct": 0.0}
 
         year_summaries[year] = year_entry

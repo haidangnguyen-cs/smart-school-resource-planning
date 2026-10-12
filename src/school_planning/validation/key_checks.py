@@ -48,7 +48,9 @@ def validate_key_uniqueness(
         errors.append(f"{null_key_rows} rows contain null values in primary key columns {key_cols}")
 
     if duplicate_rows_count > 0:
-        errors.append(f"Found {duplicate_rows_count} duplicate rows violating primary key uniqueness on {key_cols}")
+        errors.append(
+            f"Found {duplicate_rows_count} duplicate rows violating primary key uniqueness on {key_cols}"
+        )
 
     valid = (null_key_rows == 0) and (duplicate_rows_count == 0)
 
@@ -57,11 +59,7 @@ def validate_key_uniqueness(
 
     sample_duplicates = []
     if duplicate_rows_count > 0:
-        sample_duplicates = (
-            df[duplicated_mask][key_cols]
-            .head(10)
-            .to_dict(orient="records")
-        )
+        sample_duplicates = df[duplicated_mask][key_cols].head(10).to_dict(orient="records")
 
     return {
         "valid": valid,

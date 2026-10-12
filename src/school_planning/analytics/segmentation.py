@@ -60,8 +60,16 @@ def classify_peer_group_eligibility(
     """
     res = df.copy()
 
-    type_series = res[school_type_col].astype(str).str.strip() if school_type_col in res.columns else pd.Series("", index=res.index)
-    level_series = res[school_level_col].astype(str).str.strip() if school_level_col in res.columns else pd.Series("", index=res.index)
+    type_series = (
+        res[school_type_col].astype(str).str.strip()
+        if school_type_col in res.columns
+        else pd.Series("", index=res.index)
+    )
+    level_series = (
+        res[school_level_col].astype(str).str.strip()
+        if school_level_col in res.columns
+        else pd.Series("", index=res.index)
+    )
 
     # 1. Structural eligibility: Regular School and standard grade spans
     is_regular = type_series == ELIGIBLE_SCHOOL_TYPE
@@ -101,7 +109,9 @@ def classify_peer_group_eligibility(
             BENCHMARKED_STATUS_LABEL,
             NON_OPERATIONAL_STATUS_LABEL,
         ]
-        res["peer_group_status"] = np.select(status_conditions, status_choices, default=UNBENCHMARKED_STATUS_LABEL)
+        res["peer_group_status"] = np.select(
+            status_conditions, status_choices, default=UNBENCHMARKED_STATUS_LABEL
+        )
     else:
         # Backward compatibility for inputs lacking operational status columns
         res["peer_group_status"] = np.where(

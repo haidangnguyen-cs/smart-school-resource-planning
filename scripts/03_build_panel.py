@@ -135,15 +135,23 @@ def build_and_save_panel(
         status_distribution = panel_df["school_status"].value_counts(dropna=False).to_dict()
 
     missingness_summary = {
-        "missing_teacher_fte": int(panel_df["teacher_fte"].isna().sum()) if "teacher_fte" in panel_df.columns else 0,
-        "zero_teacher_anomalies": int((panel_df["zero_teacher_anomaly"] == True).sum()) if "zero_teacher_anomaly" in panel_df.columns else 0,
-        "missing_total_students": int(panel_df["total_students"].isna().sum()) if "total_students" in panel_df.columns else 0,
+        "missing_teacher_fte": int(panel_df["teacher_fte"].isna().sum())
+        if "teacher_fte" in panel_df.columns
+        else 0,
+        "zero_teacher_anomalies": int((panel_df["zero_teacher_anomaly"] == True).sum())
+        if "zero_teacher_anomaly" in panel_df.columns
+        else 0,
+        "missing_total_students": int(panel_df["total_students"].isna().sum())
+        if "total_students" in panel_df.columns
+        else 0,
     }
 
     report = {
         "panel_file": str(out_file),
         "total_records": len(panel_df),
-        "total_unique_schools": int(panel_df["school_id"].nunique()) if "school_id" in panel_df.columns else 0,
+        "total_unique_schools": int(panel_df["school_id"].nunique())
+        if "school_id" in panel_df.columns
+        else 0,
         "school_years": panel_metrics["school_years"],
         "yearly_metrics": panel_metrics["yearly_metrics"],
         "status_distribution": status_distribution,

@@ -129,7 +129,10 @@ class TestSourceAdapters:
         assert "school_id" in df.columns
         assert "total_students" in df.columns
         assert df["school_year"].iloc[0] == "2018-19"
-        assert (df["enrollment_total_indicator"] == "Derived - Education Unit Total minus Adult Education Count").all()
+        assert (
+            df["enrollment_total_indicator"]
+            == "Derived - Education Unit Total minus Adult Education Count"
+        ).all()
 
     def test_load_membership_component_missing_indicator_raises(self, tmp_path):
         bad_csv = tmp_path / "bad_membership.csv"
@@ -187,7 +190,9 @@ components:
             encoding="utf-8",
         )
 
-        manifest = build_source_manifest(project_root=tmp_path, sources_cfg_path=sources_yaml, compute_hashes=True)
+        manifest = build_source_manifest(
+            project_root=tmp_path, sources_cfg_path=sources_yaml, compute_hashes=True
+        )
         assert len(manifest.entries) == 1
         entry = manifest.entries[0]
         assert entry.component == "directory"
