@@ -97,7 +97,7 @@ ccd_sch_{component}_{year}_{layout}_{version}_{date}.csv
 | 2021-22 | `ccd_sch_029_2122_w_1a_071722.csv` | 38.8 | 102,130 |
 | 2022-23 | `ccd_sch_029_2223_w_1a_083023.csv` | 39.0 | 102,268 |
 
-- **Column count:** 62 columns (consistent across all 5 years — verified by header comparison)  
+- **Column count:** 65 columns (consistent across all 5 years — verified by header inspection)  
 - **Grain:** One row per `NCESSCH` (school) per school year  
 - **Primary key:** `NCESSCH` (12-character string, zero-padded)
 
@@ -106,24 +106,24 @@ ccd_sch_{component}_{year}_{layout}_{version}_{date}.csv
 ### 3.3 Component 052 — School Membership / Enrollment (Long format)
 
 **EDFacts component:** C052 — Membership (Enrollment)  
-**Purpose:** Student enrollment counts, disaggregated by grade, race/ethnicity, and sex. Multiple rows per school due to disaggregation. Must filter on `TOTAL_INDICATOR = 'Education Unit Total'` to obtain school-level totals without double-counting.
+**Purpose:** Student enrollment counts, disaggregated by grade, race/ethnicity, and sex. Multiple rows per school due to disaggregation. Filtering to a designated school-level total indicator is required to obtain school-level totals without double-counting disaggregated rows (see section 4.2).
 
-| Year | Filename | Size (GB) | Total rows (full file) | "Education Unit Total" rows |
-|------|----------|-----------|------------------------|------------------------------|
-| 2018-19 | `ccd_SCH_052_1819_l_1a_091019.csv` | 2.34 | 11,948,167 | 99,533 |
+| Year | Filename | Size (GB) | Total rows (full file) | School-level total rows (EU Total / Derived without AE) |
+|------|----------|-----------|------------------------|---------------------------------------------------------|
+| 2018-19 | `ccd_SCH_052_1819_l_1a_091019.csv` | 2.34 | 11,948,167 | 99,533 (each total indicator) |
 | 2019-20 | `ccd_SCH_052_1920_l_1a_082120.csv` | 2.33 | — (not yet scanned) | — |
 | 2020-21 | `ccd_SCH_052_2021_l_1a_080621.csv` | 2.18 | — (not yet scanned) | — |
 | 2021-22 | `ccd_SCH_052_2122_l_1a_071722.csv` | 2.19 | — (not yet scanned) | — |
 | 2022-23 | `ccd_sch_052_2223_l_1a_083023.csv` | 2.20 | — (not yet scanned) | — |
 
-> **Note on 2018-19 row count:** Full-file scan completed. Total rows: 11,948,167. After filtering to `TOTAL_INDICATOR = 'Education Unit Total'`, the effective school-level row count is **99,533** — consistent with the 029 directory school count of 102,176 (some schools have no enrollment record).
+> **Note on 2018-19 row count:** Full-file scan completed. Total rows: 11,948,167. Both `TOTAL_INDICATOR = 'Education Unit Total'` and `TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'` yield **99,533** rows each — consistent with the 029 directory school count of 102,176 (some schools have no enrollment record).
 > Remaining years were not fully scanned during Phase 0 given file size (~2.2–2.3 GB each). Based on file sizes and the 2022-23 staff row count (100,571), the school-level enrollment counts are expected to be in the 99,000–102,000 range per year.
 > Full row counts will be recorded in `outputs/quality_reports/source_inventory.json` during Phase 2 ingestion.
 
 - **Column count:** 18 columns (consistent across all 5 years — verified)  
 - **Grain (raw):** One row per `NCESSCH` × `GRADE` × `RACE_ETHNICITY` × `SEX` × `TOTAL_INDICATOR`  
-- **Grain (filtered):** One row per `NCESSCH` when filtering to `TOTAL_INDICATOR = 'Education Unit Total'`  
-- **Critical filtering requirement:** Always filter to `TOTAL_INDICATOR = 'Education Unit Total'` before computing enrollment totals.  
+- **Grain (filtered):** One row per `NCESSCH` when filtering to a school-level total indicator (`Education Unit Total` or `Derived - Education Unit Total minus Adult Education Count`)  
+- **Filtering requirement:** Filter out disaggregated detail rows before computing school enrollment totals. The choice between `Education Unit Total` (includes adult education) and `Derived - Education Unit Total minus Adult Education Count` (excludes adult education) represents differing enrollment concepts and is deferred to the Phase 1 data contract.  
 - **Primary key (filtered):** `NCESSCH` + `SCHOOL_YEAR`
 
 ---
@@ -154,16 +154,24 @@ ccd_sch_{component}_{year}_{layout}_{version}_{date}.csv
 The 059 (Staff) files contain ~2–3% fewer rows than the 029 (Directory) files each year. Not all directory schools have a staff record. This creates left-join nulls when joining 029 to 059 on `NCESSCH`.
 
 ### 4.2 TOTAL_INDICATOR complexity (052)
-The 052 membership file is a "long" format with heavy disaggregation. Six distinct `TOTAL_INDICATOR` values were observed. **Only `'Education Unit Total'` should be used** for school-level total enrollment. All others must be excluded to avoid double-counting. This must be enforced in the cleaning pipeline.
+The 052 membership file is a "long" format with heavy disaggregation. Five distinct `TOTAL_INDICATOR` values were observed in samples (and verified in 2018-19):
+- `'Category Set A - By Race/Ethnicity; Sex; Grade'` (detailed disaggregation)
+- `'Derived - Subtotal by Race/Ethnicity and Sex minus Adult Education Count'` (derived demographic subtotal)
+- `'Subtotal 4 - By Grade'` (grade subtotal)
+- `'Education Unit Total'` (comprehensive school total, inclusive of adult education)
+- `'Derived - Education Unit Total minus Adult Education Count'` (derived school total, excluding adult education)
+
+`'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` represent two distinct school-level enrollment definitions. In 2018-19, each appears exactly 99,533 times for the same school cohort. Neither definition should be assumed to be universally the only valid total; the analytical choice depends on whether adult education is considered part of standard K-12 operational student load. The final KPI choice is left for the Phase 1 data contract. All other disaggregated rows must be excluded to prevent double-counting.
 
 ### 4.3 Missing and suppressed data
-Staff FTE data (059, TEACHERS field) shows multiple missingness types in `DMS_FLAG`:
-- `'Reported'`: valid numeric FTE
-- `'Missing'`: data not collected or unavailable
-- `'Not reported'`: state chose not to report
-- `'Suppressed'`: data withheld (usually for small n privacy)
-
-These must not be treated as zero. They require explicit missing-value handling.
+Data missingness and suppression are tracked via `DMS_FLAG`:
+- **059 Staff FTE (`TEACHERS`):** Fully profiled across 2018-19 and 2022-23 into 4 verified categories:
+  - `'Reported'`: valid numeric FTE
+  - `'Missing'`: data not collected or unavailable
+  - `'Not reported'`: state chose not to report
+  - `'Suppressed'`: data withheld (usually for small n privacy)
+  Non-`'Reported'` rows must not be treated as zero; they require explicit missing-value handling.
+- **052 Membership (`STUDENT_COUNT`):** The full domain of `DMS_FLAG` across all 12 million rows and 5 years is **unverified**. In sampled rows, observed values include `'Reported'`, `'Missing'`, `'Not reported'`, `'Suppressed'`, `'Derived'`, and `'Manual adjustment'`. Full profiling is pending Phase 2. Non-numeric `STUDENT_COUNT` values in sampled records appear as empty strings (`""`) in CSV, with suppression/missingness explanations captured in `DMS_FLAG`.
 
 ### 4.4 School operational status
 The 029 directory includes schools with `SY_STATUS_TEXT` values including:
@@ -171,8 +179,11 @@ The 029 directory includes schools with `SY_STATUS_TEXT` values including:
 
 For resource analysis and trend calculation, only `'Open'` and `'New'` schools should be included by default. Closed, Inactive, and Future schools require explicit filtering decisions (to be defined in Phase 1).
 
-### 4.5 Identifier leading zeros
-`NCESSCH` is a 12-character string (state FIPS 2 + LEA 5 + school 5). `LEAID` is a 7-character string. Both must be read and stored as strings, not integers, to preserve leading zeros.
+### 4.5 Identifier structure and leading zeros
+- `NCESSCH` is a 12-character zero-padded string composed of: State FIPS (2 chars) + LEA code (5 chars) + School code (5 chars).
+- `LEAID` is a 7-character string composed of: State FIPS (2 chars) + LEA code (5 chars).
+- `SCHID` is a 7-character string composed of: State FIPS (2 chars) + School code (5 chars), mathematically equal to `FIPST + NCESSCH[-5:]`. Note that `SCHID` is **not** the last 7 characters of `NCESSCH` (`NCESSCH[-7:]` would overlap LEA and school codes).
+- All identifiers must be read and stored as strings to preserve leading zeros.
 
 ### 4.6 Year 2020-21 potential anomaly
 The 2020-21 school year corresponds to the COVID-19 pandemic period. Enrollment and staffing data from this year may reflect temporary school closures, hybrid models, and reporting anomalies. This year requires additional interpretive caution in trend analysis.
@@ -207,11 +218,11 @@ No PDF record layouts, codebooks, or companion SAS files were found in the works
 
 | Component | Schema consistent across 5 years? | Evidence |
 |-----------|-----------------------------------|----------|
-| 029 Directory | **Yes** — identical 62-column header | Headers compared for 2018-19, 2019-20, 2020-21, 2021-22, 2022-23 |
-| 052 Membership | **Yes** — identical 18-column header | Headers compared for 2018-19, 2019-20, 2022-23 |
-| 059 Staff | **Yes** — identical 15-column header | Headers compared for 2018-19, 2019-20, 2022-23 |
+| 029 Directory | **Yes** — identical 65-column header | Headers inspected across all 5 school years (2018-19 through 2022-23) |
+| 052 Membership | **Yes** — identical 18-column header | Headers inspected across all 5 school years (2018-19 through 2022-23) |
+| 059 Staff | **Yes** — identical 15-column header | Headers inspected across all 5 school years (2018-19 through 2022-23) |
 
-No schema changes detected. Column additions or renaming across years cannot be ruled out completely without downloading and comparing official record layouts, but all sample rows parsed correctly with the same column set.
+No schema changes detected across any of the 15 raw files. Column count, names, and ordering are identical year-to-year within each component.
 
 ---
 

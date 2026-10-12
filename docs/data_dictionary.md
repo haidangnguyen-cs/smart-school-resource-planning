@@ -14,14 +14,14 @@ This dictionary documents the fields in the three NCES CCD source components pre
 - **029 Directory:** One row per school per school year (`NCESSCH` + `SCHOOL_YEAR`)
 - **059 Staff:** One row per school per school year (`NCESSCH` + `SCHOOL_YEAR`) — all rows have `TOTAL_INDICATOR = 'Education Unit Total'`
 - **052 Membership (raw):** Multiple rows per school per year (disaggregated by grade, race/ethnicity, sex, and total-indicator level)
-- **052 Membership (filtered):** One row per school per year when filtered to `TOTAL_INDICATOR = 'Education Unit Total'`
+- **052 Membership (filtered):** One row per school per year when filtered to a designated school-level total indicator (`Education Unit Total` or `Derived - Education Unit Total minus Adult Education Count`)
 
 ---
 
 ## Component 029 — School Directory
 
 **File format:** Wide CSV  
-**Columns:** 62  
+**Columns:** 65  
 **Key:** `NCESSCH` (unique per year within this file)
 
 | # | Field Name | Observed Type | Description | Notes |
@@ -38,7 +38,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 10 | `LEAID` | String (7-char) | NCES LEA (district) identifier | 7-digit, zero-padded — **read as string** |
 | 11 | `ST_SCHID` | String | State-assigned school identifier | Format: `ST-NNN-NNNN` |
 | 12 | `NCESSCH` | String (12-char) | NCES school identifier (primary key) | 12-digit, zero-padded — **read as string** |
-| 13 | `SCHID` | String (7-char) | NCES school portion of NCESSCH (last 7 chars) | |
+| 13 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
 | 14 | `MSTREET1` | String | Mailing address line 1 | |
 | 15 | `MSTREET2` | String | Mailing address line 2 | Often empty |
 | 16 | `MSTREET3` | String | Mailing address line 3 | Often empty |
@@ -92,7 +92,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 64 | `LEVEL` | String | School level classification | See domain below |
 | 65 | `IGOFFERED` | String | Instruction grades offered indicator | e.g., `'As reported'` |
 
-> **Note:** The header shows 62 column names. The sample data row confirms 62 columns. Rows 62–65 above are the last 4 of the 62.
+> **Note:** The header contains exactly 65 columns, verified across all 5 school years (2018-19 through 2022-23). Rows 1–65 above document each field in exact order.
 
 ### 029 Domain Values (Verified from 2022-23)
 
@@ -151,7 +151,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 9 | `LEAID` | String (7-char) | NCES LEA (district) identifier | **Read as string** |
 | 10 | `ST_SCHID` | String | State-assigned school identifier | |
 | 11 | `NCESSCH` | String (12-char) | NCES school identifier (primary key) | **Read as string** |
-| 12 | `SCHID` | String (7-char) | NCES school-portion identifier | |
+| 12 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
 | 13 | `TEACHERS` | Float | Full-time equivalent (FTE) teacher count | See quality notes below |
 | 14 | `TOTAL_INDICATOR` | String | Aggregation level | Always `'Education Unit Total'` in these files |
 | 15 | `DMS_FLAG` | String | Data missingness/suppression flag | See domain below |
@@ -191,7 +191,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 **File format:** Long CSV  
 **Columns:** 18  
 **Key (raw):** `NCESSCH` + `SCHOOL_YEAR` + `GRADE` + `RACE_ETHNICITY` + `SEX` + `TOTAL_INDICATOR`  
-**Key (filtered):** `NCESSCH` + `SCHOOL_YEAR` when `TOTAL_INDICATOR = 'Education Unit Total'`
+**Key (filtered):** `NCESSCH` + `SCHOOL_YEAR` when filtered to a school-level total indicator (`Education Unit Total` or `Derived - Education Unit Total minus Adult Education Count`)
 
 | # | Field Name | Observed Type | Description | Notes |
 |---|-----------|--------------|-------------|-------|
@@ -206,13 +206,13 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 9 | `LEAID` | String (7-char) | NCES LEA (district) identifier | **Read as string** |
 | 10 | `ST_SCHID` | String | State-assigned school identifier | |
 | 11 | `NCESSCH` | String (12-char) | NCES school identifier | **Read as string** |
-| 12 | `SCHID` | String (7-char) | NCES school-portion identifier | |
+| 12 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
 | 13 | `GRADE` | String | Grade level label | e.g., `'Grade 3'`, `'Kindergarten'`, `'No Category Codes'` |
 | 14 | `RACE_ETHNICITY` | String | Race/ethnicity category | e.g., `'American Indian or Alaska Native'` |
 | 15 | `SEX` | String | Sex category | e.g., `'Female'`, `'Male'` |
-| 16 | `STUDENT_COUNT` | Integer (or missing) | Student enrollment count for this disaggregation | May be missing or suppressed |
-| 17 | `TOTAL_INDICATOR` | String | Aggregation level of this row | **Must filter to `'Education Unit Total'`** |
-| 18 | `DMS_FLAG` | String | Data missingness/suppression flag | Same domain as 059 |
+| 16 | `STUDENT_COUNT` | Integer / Empty string | Student enrollment count for this disaggregation | Non-numeric entries observed as empty string `""` in CSV; suppression/missingness code recorded in `DMS_FLAG` |
+| 17 | `TOTAL_INDICATOR` | String | Aggregation level of this row | Disaggregated rows must be excluded; school-level total choice (`Education Unit Total` vs `Derived - EU Total minus AE`) deferred to Phase 1 data contract |
+| 18 | `DMS_FLAG` | String | Data missingness/suppression flag | Unverified full domain across 5 years; sample observations include `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment` |
 
 ### 052 Quality Observations (2018-19, full-file scan verified)
 
@@ -236,12 +236,16 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | `'Category Set A - By Race/Ethnicity; Sex; Grade'` | 9,528,008 | Disaggregated detail row |
 | `'Derived - Subtotal by Race/Ethnicity and Sex minus Adult Education Count'` | 1,492,995 | Derived subtotal |
 | `'Subtotal 4 - By Grade'` | 728,098 | Grade subtotal |
-| `'Derived - Education Unit Total minus Adult Education Count'` | 99,533 | Derived school total (excluding AE) |
-| `'Education Unit Total'` | 99,533 | **School-level total** — use this |
+| `'Derived - Education Unit Total minus Adult Education Count'` | 99,533 | Derived school total (excluding Adult Education) |
+| `'Education Unit Total'` | 99,533 | Education unit school total (including Adult Education) |
 
-> **Note:** Total rows in 2018-19 file: 11,948,167. `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` always appear in equal numbers and represent the same set of schools. Use only `'Education Unit Total'` for school-level totals.
-
-> **Critical:** Only rows with `TOTAL_INDICATOR = 'Education Unit Total'` represent school-level total enrollment. All other rows are disaggregations or derived subtotals and must be excluded to avoid double-counting. Using any other indicator value for enrollment totals will inflate counts dramatically.
+> **Comparison of School-Level Totals:** In the 2018-19 file, `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` each contain exactly 99,533 rows, representing the same set of reporting schools. They embody two distinct enrollment concepts:
+> - `'Education Unit Total'`: Comprehensive enrollment count across all programs at the school, including adult education students if reported.
+> - `'Derived - Education Unit Total minus Adult Education Count'`: Enrollment count excluding adult education students, reflecting standard pre-K through grade 12 student body load.
+>
+> **Data Contract Decision (Phase 1):** Neither total should be asserted as universally the only valid school-level total. The choice of which indicator defines the primary enrollment KPI will be formally specified in the Phase 1 data contract based on business requirements.
+>
+> **Critical Filtering Rule:** Ingestion and cleaning pipelines must filter out all disaggregated detail and subtotal rows (`'Category Set A...'`, `'Subtotal 4...'`, and `'Derived - Subtotal...'`) to prevent double-counting. Aggregating across multiple indicator categories would inflate enrollment counts by ~120×.
 
 ### 052 GRADE Domain (first 200,000 rows, 2018-19)
 
@@ -251,7 +255,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 
 The 052 membership files are the largest in the workspace (~2.2–2.3 GB each). Full-file processing requires:
 - Streaming/chunked reading — never load entirely into memory at once
-- Filter to `TOTAL_INDICATOR = 'Education Unit Total'` as early as possible in the pipeline
+- Filter to a designated school-level total indicator as early as possible in the pipeline
 - Consider producing a pre-filtered interim Parquet file (~100K rows per year) in Phase 2
 
 ---
@@ -262,12 +266,19 @@ The 052 membership files are the largest in the workspace (~2.2–2.3 GB each). 
 |-------|--------|------|-----------|-------|
 | `NCESSCH` | 12 chars | String | 029, 052, 059 | Primary join key across all components |
 | `LEAID` | 7 chars | String | 029, 052, 059 | District-level join key |
-| `SCHID` | 7 chars | String | 029, 052, 059 | Last 7 digits of NCESSCH |
+| `SCHID` | 7 chars | String | 029, 052, 059 | Equal to `FIPST + NCESSCH[-5:]`. **Not** the last 7 chars of `NCESSCH`. |
 | `FIPST` | 2 chars | String | 029, 052, 059 | State FIPS code |
 | `ST` | 2 chars | String | 029, 052, 059 | State abbreviation |
 | `ST_LEAID` | Variable | String | 029, 052, 059 | State-assigned LEA ID (format varies by state) |
 | `ST_SCHID` | Variable | String | 029, 052, 059 | State-assigned school ID |
 | `SCHOOL_YEAR` | 9 chars | String | 029, 052, 059 | Format: `'YYYY-YYYY'` |
+
+### Identifier Structure and Relationships
+
+Based on mathematical verification across directory records (0 mismatches across 102k+ rows):
+- **`NCESSCH` (12 chars):** `FIPST` (2 chars) + LEA code (5 chars) + School code (5 chars) = `LEAID` (7 chars) + `SCHID[-5:]` (5 chars).
+- **`LEAID` (7 chars):** `FIPST` (2 chars) + LEA code (5 chars) = `NCESSCH[:7]`.
+- **`SCHID` (7 chars):** `FIPST` (2 chars) + School code (5 chars) = `FIPST + NCESSCH[-5:]`. Note: The last 7 characters of `NCESSCH` (`NCESSCH[-7:]`) encompass the last 2 digits of the LEA code plus the 5-digit school code, and do NOT equal `SCHID`.
 
 ### Joining the three components
 
@@ -276,7 +287,7 @@ The intended join strategy for the analytical panel is:
 ```
 029 (Directory) 
   LEFT JOIN 059 (Staff)      ON NCESSCH + SCHOOL_YEAR
-  LEFT JOIN 052 (Membership) ON NCESSCH + SCHOOL_YEAR  [pre-filtered to Education Unit Total]
+  LEFT JOIN 052 (Membership) ON NCESSCH + SCHOOL_YEAR  [pre-filtered to agreed school-level total indicator]
 ```
 
 Expected cardinality:
@@ -305,7 +316,7 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 | `grade_low` | 029 | `GSLO` | Lowest grade offered |
 | `grade_high` | 029 | `GSHI` | Highest grade offered |
 | `is_charter` | 029 | `CHARTER_TEXT` | Charter school flag |
-| `total_students` | 052 | `STUDENT_COUNT` (filtered) | School-level enrollment total |
+| `total_students` | 052 | `STUDENT_COUNT` (filtered) | School-level enrollment total (choice between EU Total and Derived without AE deferred to Phase 1 data contract) |
 | `teacher_fte` | 059 | `TEACHERS` | Teacher FTE |
 | `teacher_data_flag` | 059 | `DMS_FLAG` | Missingness/suppression flag for TEACHERS |
 
@@ -313,13 +324,15 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 
 ## Fields Marked for Further Investigation
 
-| Field | Component | Issue |
-|-------|-----------|-------|
-| `STUDENT_COUNT` | 052 | Missing/suppressed values not yet quantified across all years |
-| `TEACHERS = 0.0` | 059 | ~1,427 schools report 0.0 FTE — may reflect data issues, not genuinely zero-teacher schools |
-| `SY_STATUS_TEXT = 'Inactive'` | 029 | Unclear whether inactive schools have enrollment or staff records |
-| `LEVEL = 'Not reported'` | 029 | ~2,000 schools per year without a school level classification |
-| `RECON_STATUS` | 029 | Not yet characterized; may affect which records are canonical |
-| `UPDATED_STATUS_TEXT` | 029 | Relationship to `SY_STATUS_TEXT` not yet clarified |
-| `G_13_OFFERED` | 029 | Grade 13 (post-secondary) — requires decision on scope inclusion |
-| `G_AE_OFFERED` | 029 | Adult Education — note the 052 TOTAL_INDICATOR includes an AE-excluded derived total |
+| Field | Component | Status | Issue / Investigation |
+|-------|-----------|--------|-----------------------|
+| `TOTAL_INDICATOR` | 052 | Policy choice | Decision required in Phase 1 data contract: `Education Unit Total` (includes adult ed) vs `Derived - Education Unit Total minus Adult Education Count` (excludes adult ed). |
+| `DMS_FLAG` | 052 | Unverified | Full domain across 12M rows and 5 years is unverified; sample rows show `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment`. Full profiling deferred to Phase 2. |
+| `STUDENT_COUNT` | 052 | Partially profiled | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Full 5-year missingness counts deferred to Phase 2. |
+| `TEACHERS = 0.0` | 059 | Investigated | ~1,427 schools report 0.0 FTE with `DMS_FLAG = 'Reported'` in 2018-19. Requires business logic in Phase 1 (e.g. check operational status vs valid zero). |
+| `SY_STATUS_TEXT = 'Inactive'` | 029 | Pending Phase 1 | Filtering rule needed for non-operational schools (Closed, Inactive, Future). |
+| `LEVEL = 'Not reported'` | 029 | Pending Phase 2 | ~2,000 schools per year without school level classification. |
+| `RECON_STATUS` | 029 | Pending Phase 2 | Not yet characterized; may affect which records are canonical. |
+| `UPDATED_STATUS_TEXT` | 029 | Pending Phase 2 | Relationship to `SY_STATUS_TEXT` to be evaluated during panel construction. |
+| `G_13_OFFERED` | 029 | Pending Phase 1 | Grade 13 (post-secondary) — scope inclusion to be defined. |
+| `G_AE_OFFERED` | 029 | Pending Phase 1 | Adult Education offered flag — relevant to 052 total indicator choice. |
