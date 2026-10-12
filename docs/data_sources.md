@@ -33,7 +33,7 @@ The CCD is the U.S. Department of Education's primary database on public element
 
 **Root location:** `data/raw/nces_ccd/`
 
-All files are standard UTF-8 CSV with a header row. No companion ZIP or SAS files were found in the workspace.
+File character encoding is **unverified** across all 15 raw CSV files. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed in sample reads. Decoding errors must not be silently ignored (e.g. via `errors='ignore'`); robust encoding detection and handling must be established in the Phase 2 ingestion pipeline. No companion ZIP or SAS files were found in the workspace.
 
 ### Layout
 
@@ -116,7 +116,7 @@ ccd_sch_{component}_{year}_{layout}_{version}_{date}.csv
 | 2021-22 | `ccd_SCH_052_2122_l_1a_071722.csv` | 2.19 | — (not yet scanned) | — |
 | 2022-23 | `ccd_sch_052_2223_l_1a_083023.csv` | 2.20 | — (not yet scanned) | — |
 
-> **Note on 2018-19 row count:** Full-file scan completed. Total rows: 11,948,167. Both `TOTAL_INDICATOR = 'Education Unit Total'` and `TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'` yield **99,533** rows each — consistent with the 029 directory school count of 102,176 (some schools have no enrollment record).
+> **Note on 2018-19 row count and school cohorts:** Full-file scan completed for 2018-19. Total rows: 11,948,167. Both `TOTAL_INDICATOR = 'Education Unit Total'` and `TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'` yield **99,533** rows each. Set equality between the two indicators was explicitly verified for 2018-19: both contain the exact same set of 99,533 `NCESSCH` identifiers (0 set difference in either direction). For the remaining years (2019-20 through 2022-23), full files have not been scanned, so cohort equivalence across those years remains unverified until Phase 2 ingestion.
 > Remaining years were not fully scanned during Phase 0 given file size (~2.2–2.3 GB each). Based on file sizes and the 2022-23 staff row count (100,571), the school-level enrollment counts are expected to be in the 99,000–102,000 range per year.
 > Full row counts will be recorded in `outputs/quality_reports/source_inventory.json` during Phase 2 ingestion.
 
@@ -161,7 +161,7 @@ The 052 membership file is a "long" format with heavy disaggregation. Five disti
 - `'Education Unit Total'` (comprehensive school total, inclusive of adult education)
 - `'Derived - Education Unit Total minus Adult Education Count'` (derived school total, excluding adult education)
 
-`'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` represent two distinct school-level enrollment definitions. In 2018-19, each appears exactly 99,533 times for the same school cohort. Neither definition should be assumed to be universally the only valid total; the analytical choice depends on whether adult education is considered part of standard K-12 operational student load. The final KPI choice is left for the Phase 1 data contract. All other disaggregated rows must be excluded to prevent double-counting.
+`'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` represent two distinct school-level enrollment definitions. In 2018-19, each yields exactly 99,533 rows, and set equality of their school cohorts (`NCESSCH`) was explicitly verified (cohort equivalence across 2019-20 through 2022-23 remains unverified until Phase 2). Neither definition should be assumed to be universally the only valid total; the analytical choice depends on whether adult education is considered part of standard K-12 operational student load. The final KPI choice is left for the Phase 1 data contract. All other disaggregated rows must be excluded to prevent double-counting.
 
 ### 4.3 Missing and suppressed data
 Data missingness and suppression are tracked via `DMS_FLAG`:
@@ -177,12 +177,15 @@ Data missingness and suppression are tracked via `DMS_FLAG`:
 The 029 directory includes schools with `SY_STATUS_TEXT` values including:
 `'Open'`, `'New'`, `'Closed'`, `'Inactive'`, `'Future'`, `'Added'`, `'Changed Boundary/Agency'`, `'Reopened'`
 
-For resource analysis and trend calculation, only `'Open'` and `'New'` schools should be included by default. Closed, Inactive, and Future schools require explicit filtering decisions (to be defined in Phase 1).
+Including only `'Open'` and `'New'` schools represents a candidate scoping rule to evaluate and formally decide in the Phase 1 data contract, rather than an automatic default. Handling of Closed, Inactive, Future, Added, Changed Boundary, and Reopened schools will be explicitly defined in that contract.
 
-### 4.5 Identifier structure and leading zeros
+### 4.5 Identifier structure, empirical observations, and official definitions
 - `NCESSCH` is a 12-character zero-padded string composed of: State FIPS (2 chars) + LEA code (5 chars) + School code (5 chars).
 - `LEAID` is a 7-character string composed of: State FIPS (2 chars) + LEA code (5 chars).
-- `SCHID` is a 7-character string composed of: State FIPS (2 chars) + School code (5 chars), mathematically equal to `FIPST + NCESSCH[-5:]`. Note that `SCHID` is **not** the last 7 characters of `NCESSCH` (`NCESSCH[-7:]` would overlap LEA and school codes).
+- `SCHID` distinction between official definition and observed data:
+  - **Official NCES definition:** In federal NCES CCD specifications, `SCHID` is documented as a 5-digit NCES-assigned school identifier that appends to `LEAID` (7 chars) to form `NCESSCH` (12 chars).
+  - **Observed empirical data in downloaded files:** In the 15 raw CSV releases present in this workspace, the `SCHID` column contains a 7-character string that strictly equals `FIPST + NCESSCH[-5:]` (verified across 102k+ records in 2018-19 and 2022-23 with 0 mismatches). It is **not** the last 7 characters of `NCESSCH` (`NCESSCH[-7:]` would overlap `LEAID` and the school code).
+  - **Status:** We preserve this empirical finding, but distinguish it from the official 5-digit definition. Without official companion record layouts for these specific file releases, the exact reason for this 7-character layout (e.g., whether NCES prepended `FIPST` in this extract) remains officially unconfirmed.
 - All identifiers must be read and stored as strings to preserve leading zeros.
 
 ### 4.6 Year 2020-21 potential anomaly

@@ -10,6 +10,8 @@
 
 This dictionary documents the fields in the three NCES CCD source components present in the workspace. All field names are taken directly from the CSV headers. Data types are inferred from observed sample values; official type specifications require the NCES record layout documents (not available locally during this audit).
 
+**Character encoding note:** Character encoding across all raw source files is **unverified**. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed. Decoding errors must not be silently discarded; robust encoding handling is deferred to the Phase 2 ingestion pipeline.
+
 **Grain definitions:**
 - **029 Directory:** One row per school per school year (`NCESSCH` + `SCHOOL_YEAR`)
 - **059 Staff:** One row per school per school year (`NCESSCH` + `SCHOOL_YEAR`) — all rows have `TOTAL_INDICATOR = 'Education Unit Total'`
@@ -38,7 +40,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 10 | `LEAID` | String (7-char) | NCES LEA (district) identifier | 7-digit, zero-padded — **read as string** |
 | 11 | `ST_SCHID` | String | State-assigned school identifier | Format: `ST-NNN-NNNN` |
 | 12 | `NCESSCH` | String (12-char) | NCES school identifier (primary key) | 12-digit, zero-padded — **read as string** |
-| 13 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
+| 13 | `SCHID` | String (7-char) | NCES school identifier | Empirically observed as `FIPST + NCESSCH[-5:]` (7 chars). Note: Officially documented by NCES as a 5-digit code within LEAID; release-specific layout unconfirmed without official codebook. **Not** the last 7 chars of `NCESSCH`. |
 | 14 | `MSTREET1` | String | Mailing address line 1 | |
 | 15 | `MSTREET2` | String | Mailing address line 2 | Often empty |
 | 16 | `MSTREET3` | String | Mailing address line 3 | Often empty |
@@ -151,7 +153,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 9 | `LEAID` | String (7-char) | NCES LEA (district) identifier | **Read as string** |
 | 10 | `ST_SCHID` | String | State-assigned school identifier | |
 | 11 | `NCESSCH` | String (12-char) | NCES school identifier (primary key) | **Read as string** |
-| 12 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
+| 12 | `SCHID` | String (7-char) | NCES school identifier | Empirically observed as `FIPST + NCESSCH[-5:]` (7 chars). Note: Officially documented as 5-digit code within LEAID; release-specific layout unconfirmed without official codebook. **Not** the last 7 chars of `NCESSCH`. |
 | 13 | `TEACHERS` | Float | Full-time equivalent (FTE) teacher count | See quality notes below |
 | 14 | `TOTAL_INDICATOR` | String | Aggregation level | Always `'Education Unit Total'` in these files |
 | 15 | `DMS_FLAG` | String | Data missingness/suppression flag | See domain below |
@@ -206,7 +208,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 9 | `LEAID` | String (7-char) | NCES LEA (district) identifier | **Read as string** |
 | 10 | `ST_SCHID` | String | State-assigned school identifier | |
 | 11 | `NCESSCH` | String (12-char) | NCES school identifier | **Read as string** |
-| 12 | `SCHID` | String (7-char) | NCES school identifier | Equal to `FIPST + NCESSCH[-5:]` (State FIPS + 5-digit NCES school code). **Not** the last 7 chars of `NCESSCH`. |
+| 12 | `SCHID` | String (7-char) | NCES school identifier | Empirically observed as `FIPST + NCESSCH[-5:]` (7 chars). Note: Officially documented as 5-digit code within LEAID; release-specific layout unconfirmed without official codebook. **Not** the last 7 chars of `NCESSCH`. |
 | 13 | `GRADE` | String | Grade level label | e.g., `'Grade 3'`, `'Kindergarten'`, `'No Category Codes'` |
 | 14 | `RACE_ETHNICITY` | String | Race/ethnicity category | e.g., `'American Indian or Alaska Native'` |
 | 15 | `SEX` | String | Sex category | e.g., `'Female'`, `'Male'` |
@@ -239,7 +241,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | `'Derived - Education Unit Total minus Adult Education Count'` | 99,533 | Derived school total (excluding Adult Education) |
 | `'Education Unit Total'` | 99,533 | Education unit school total (including Adult Education) |
 
-> **Comparison of School-Level Totals:** In the 2018-19 file, `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` each contain exactly 99,533 rows, representing the same set of reporting schools. They embody two distinct enrollment concepts:
+> **Comparison of School-Level Totals:** In the 2018-19 file, `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` each contain exactly 99,533 rows. Set equality of their school cohorts (`NCESSCH`) was explicitly verified for 2018-19 (both contain the identical 99,533 schools with 0 difference in either direction). Cohort equivalence across 2019-20 through 2022-23 remains unverified until Phase 2 ingestion. They embody two distinct enrollment concepts:
 > - `'Education Unit Total'`: Comprehensive enrollment count across all programs at the school, including adult education students if reported.
 > - `'Derived - Education Unit Total minus Adult Education Count'`: Enrollment count excluding adult education students, reflecting standard pre-K through grade 12 student body load.
 >
@@ -266,7 +268,7 @@ The 052 membership files are the largest in the workspace (~2.2–2.3 GB each). 
 |-------|--------|------|-----------|-------|
 | `NCESSCH` | 12 chars | String | 029, 052, 059 | Primary join key across all components |
 | `LEAID` | 7 chars | String | 029, 052, 059 | District-level join key |
-| `SCHID` | 7 chars | String | 029, 052, 059 | Equal to `FIPST + NCESSCH[-5:]`. **Not** the last 7 chars of `NCESSCH`. |
+| `SCHID` | 7 chars | String | 029, 052, 059 | Empirically observed as `FIPST + NCESSCH[-5:]`. Officially defined as 5 digits. **Not** the last 7 chars of `NCESSCH`. |
 | `FIPST` | 2 chars | String | 029, 052, 059 | State FIPS code |
 | `ST` | 2 chars | String | 029, 052, 059 | State abbreviation |
 | `ST_LEAID` | Variable | String | 029, 052, 059 | State-assigned LEA ID (format varies by state) |
@@ -275,10 +277,11 @@ The 052 membership files are the largest in the workspace (~2.2–2.3 GB each). 
 
 ### Identifier Structure and Relationships
 
-Based on mathematical verification across directory records (0 mismatches across 102k+ rows):
 - **`NCESSCH` (12 chars):** `FIPST` (2 chars) + LEA code (5 chars) + School code (5 chars) = `LEAID` (7 chars) + `SCHID[-5:]` (5 chars).
 - **`LEAID` (7 chars):** `FIPST` (2 chars) + LEA code (5 chars) = `NCESSCH[:7]`.
-- **`SCHID` (7 chars):** `FIPST` (2 chars) + School code (5 chars) = `FIPST + NCESSCH[-5:]`. Note: The last 7 characters of `NCESSCH` (`NCESSCH[-7:]`) encompass the last 2 digits of the LEA code plus the 5-digit school code, and do NOT equal `SCHID`.
+- **`SCHID` distinction between official definition and empirical data:**
+  - *Official definition:* In federal NCES CCD documentation, `SCHID` is defined as a 5-digit NCES-assigned school identifier within the LEA that appends to `LEAID` (7 chars) to produce `NCESSCH` (12 chars).
+  - *Observed empirical data:* In the 15 raw CSV releases present in this workspace, `SCHID` is formatted as a 7-character string mathematically equal to `FIPST + NCESSCH[-5:]` (0 mismatches across 102k+ rows in 2018-19 and 2022-23). Note: `SCHID` does **not** equal the last 7 characters of `NCESSCH` (`NCESSCH[-7:]`). The exact release-specific layout reason remains unconfirmed without matching release codebooks.
 
 ### Joining the three components
 
@@ -310,7 +313,7 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 | `school_year` | 029 | `SCHOOL_YEAR` | Standardized year label |
 | `school_name` | 029 | `SCH_NAME` | School name |
 | `district_name` | 029 | `LEA_NAME` | District name |
-| `school_status` | 029 | `SY_STATUS_TEXT` | Operational status |
+| `school_status` | 029 | `SY_STATUS_TEXT` | Operational status (candidate scoping rule, e.g. Open/New vs Inactive/Closed, to be decided in Phase 1 contract) |
 | `school_type` | 029 | `SCH_TYPE_TEXT` | School type category |
 | `school_level` | 029 | `LEVEL` | Level (Elementary/Middle/High/etc.) |
 | `grade_low` | 029 | `GSLO` | Lowest grade offered |
@@ -324,13 +327,15 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 
 ## Fields Marked for Further Investigation
 
-| Field | Component | Status | Issue / Investigation |
-|-------|-----------|--------|-----------------------|
-| `TOTAL_INDICATOR` | 052 | Policy choice | Decision required in Phase 1 data contract: `Education Unit Total` (includes adult ed) vs `Derived - Education Unit Total minus Adult Education Count` (excludes adult ed). |
+| Field / Topic | Component | Status | Issue / Investigation |
+|---------------|-----------|--------|-----------------------|
+| `TOTAL_INDICATOR` | 052 | Policy choice | Decision required in Phase 1 data contract: `Education Unit Total` (includes adult ed) vs `Derived - Education Unit Total minus Adult Education Count` (excludes adult ed). 2018-19 cohort set equality verified; 2019-20 through 2022-23 unverified until Phase 2. |
 | `DMS_FLAG` | 052 | Unverified | Full domain across 12M rows and 5 years is unverified; sample rows show `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment`. Full profiling deferred to Phase 2. |
 | `STUDENT_COUNT` | 052 | Partially profiled | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Full 5-year missingness counts deferred to Phase 2. |
+| `Character encoding` | All (029, 052, 059) | Unverified | Strict UTF-8 validation not performed; Windows-1252 bytes (e.g. `0x96`) observed. Robust encoding detection and handling deferred to Phase 2 ingestion (no silent discarding). |
+| `SCHID formatting` | All (029, 052, 059) | Empirical vs Official | Empirically 7 characters (`FIPST + NCESSCH[-5:]`), officially 5 digits. Release-specific codebook unconfirmed. |
 | `TEACHERS = 0.0` | 059 | Investigated | ~1,427 schools report 0.0 FTE with `DMS_FLAG = 'Reported'` in 2018-19. Requires business logic in Phase 1 (e.g. check operational status vs valid zero). |
-| `SY_STATUS_TEXT = 'Inactive'` | 029 | Pending Phase 1 | Filtering rule needed for non-operational schools (Closed, Inactive, Future). |
+| `SY_STATUS_TEXT` | 029 | Candidate scoping rule | Candidate rule (e.g. Open/New vs Closed/Inactive/Future) to be evaluated and formally decided in Phase 1 contract, not an automatic default. |
 | `LEVEL = 'Not reported'` | 029 | Pending Phase 2 | ~2,000 schools per year without school level classification. |
 | `RECON_STATUS` | 029 | Pending Phase 2 | Not yet characterized; may affect which records are canonical. |
 | `UPDATED_STATUS_TEXT` | 029 | Pending Phase 2 | Relationship to `SY_STATUS_TEXT` to be evaluated during panel construction. |
