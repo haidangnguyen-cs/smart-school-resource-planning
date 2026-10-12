@@ -131,6 +131,15 @@ class TestSourceAdapters:
         assert df["school_year"].iloc[0] == "2018-19"
         assert (df["enrollment_total_indicator"] == "Derived - Education Unit Total minus Adult Education Count").all()
 
+    def test_load_membership_component_missing_indicator_raises(self, tmp_path):
+        bad_csv = tmp_path / "bad_membership.csv"
+        bad_csv.write_text(
+            "NCESSCH,YEAR,STUDENT_COUNT\n010000500871,2018-2019,450\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(KeyError, match="missing required indicator column 'TOTAL_INDICATOR'"):
+            load_membership_component(bad_csv)
+
     def test_load_staff_component_anomalies_and_missing(self):
         sample_path = FIXTURES_DIR / "sample_staff.csv"
         df = load_staff_component(sample_path)

@@ -101,12 +101,13 @@ def load_membership_component(
     target_indicator = primary_indicator if primary_indicator is not None else indicator
     filtered_chunks = []
     for chunk in stream_csv_chunks(filepath, chunksize=chunksize, dtype=DEFAULT_ID_DTYPES):
-        if "TOTAL_INDICATOR" in chunk.columns:
-            match = chunk[chunk["TOTAL_INDICATOR"] == target_indicator]
-            if not match.empty:
-                filtered_chunks.append(match)
-        else:
-            filtered_chunks.append(chunk)
+        if "TOTAL_INDICATOR" not in chunk.columns:
+            raise KeyError(
+                f"Raw Membership source '{filepath}' missing required indicator column 'TOTAL_INDICATOR'."
+            )
+        match = chunk[chunk["TOTAL_INDICATOR"] == target_indicator]
+        if not match.empty:
+            filtered_chunks.append(match)
 
     if not filtered_chunks:
         df = pd.DataFrame()
