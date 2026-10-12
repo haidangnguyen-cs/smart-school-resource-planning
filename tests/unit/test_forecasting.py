@@ -760,6 +760,7 @@ class TestForecastingPipelineExecution:
                     sch_id = f"SCH_{s_idx}_{sch_idx}"
                     records.append({
                         "school_id": sch_id,
+                        "state_fips": f"{s_idx + 1:02d}",
                         "state_name": state,
                         "school_year": yr,
                         "is_operational": True,
@@ -813,6 +814,10 @@ class TestForecastingPipelineExecution:
         assert (reports_dir / "forecasting_evaluation_report.json").exists()
 
         # Check table contents
+        agg_df = pd.read_csv(tables_dir / "state_annual_aggregates.csv")
+        assert "state_fips" in agg_df.columns
+        assert "state_name" in agg_df.columns
+
         comp_df = pd.read_csv(tables_dir / "backtest_model_comparison.csv")
         assert not comp_df.empty
         assert set(comp_df["model_name"].unique()) == set(DEFAULT_CANDIDATE_MODELS)
@@ -820,6 +825,8 @@ class TestForecastingPipelineExecution:
 
         proj_df = pd.read_csv(tables_dir / "retrospective_2023_24_projections.csv")
         assert len(proj_df) == 3
+        assert "state_fips" in proj_df.columns
+        assert "state_name" in proj_df.columns
         assert "baseline_projection" in proj_df.columns
         assert "scenario_low_contraction_minus_2pct" in proj_df.columns
         assert "scenario_high_expansion_plus_2pct" in proj_df.columns
@@ -831,3 +838,149 @@ class TestForecastingPipelineExecution:
         assert report["retrospective_2023_24_projections"]["eligible_entities_count"] == 3
         assert report["retrospective_2023_24_projections"]["excluded_entities_count"] == 0
         assert "national_totals_coverage_scope" in report["retrospective_2023_24_projections"]
+
+
+# =============================================================================
+# 8. FIPS Entity Keying and Display Name Preservation Tests
+# =============================================================================
+
+class TestStateFIPSEntityKeyAndDisplayPreservation:
+    """Test suite for canonical FIPS entity keying and display name preservation."""
+
+    def test_state_aggregation_uses_fips_as_entity_key(self) -> None:
+        panel = pd.DataFrame({
+            "school_id": ["S1", "S2"],
+            "state_fips": ["06", "06"],
+            "state_name": ["California", "California"],
+            "school_year": ["2022-23", "2022-23"],
+            "is_operational": [True, True],
+            "total_students": [500.0, 700.0],
+            "teacher_fte": [25.0, 35.0],
+        })
+        agg = aggregate_state_time_series(panel)
+        assert len(agg) == 1
+        assert "state_fips" in agg.columns
+        assert agg["state_fips"].iloc[0] == "06"
+        assert agg["total_students"].iloc[0] == pytest.approx(1200.0)
+        assert agg["teacher_fte"].iloc[0] == pytest.approx(60.0)
+
+    def test_aggregation_preserves_display_names(self) -> None:
+        panel = pd.DataFrame({
+            "school_id": ["S1", "S2"],
+            "state_fips": ["48", "12"],
+            "state_name": ["Texas", "Florida"],
+            "school_year": ["2022-23", "2022-23"],
+            "is_operational": [True, True],
+            "total_students": [1000.0, 800.0],
+            "teacher_fte": [50.0, 40.0],
+        })
+        agg = aggregate_state_time_series(panel)
+        assert len(agg) == 2
+        assert "state_fips" in agg.columns
+        assert "state_name" in agg.columns
+
+        tx = agg[agg["state_fips"] == "48"].iloc[0]
+        fl = agg[agg["state_fips"] == "12"].iloc[0]
+        assert tx["state_name"] == "Texas"
+        assert fl["state_name"] == "Florida"
+
+    def test_same_fips_different_display_labels_remain_single_entity(self) -> None:
+        # Records with the same FIPS code ("06") but varying display labels ("California" vs "Calif.")
+        panel = pd.DataFrame({
+            "school_id": ["S1", "S2"],
+            "state_fips": ["06", "06"],
+            "state_name": ["California", "Calif."],
+            "school_year": ["2022-23", "2022-23"],
+            "is_operational": [True, True],
+            "total_students": [500.0, 300.0],
+            "teacher_fte": [25.0, 15.0],
+        })
+        agg = aggregate_state_time_series(panel)
+        # MUST remain exactly 1 entity, not split by label
+        assert len(agg) == 1
+        row = agg.iloc[0]
+        assert row["state_fips"] == "06"
+        assert row["state_name"] == "California"  # Preserved non-null display name
+        assert row["total_students"] == pytest.approx(800.0)
+        assert row["teacher_fte"] == pytest.approx(40.0)
+        assert row["contributing_operational_school_count"] == 2
+
+    def test_distinct_fips_same_display_label_never_merge(self) -> None:
+        # Records with distinct FIPS codes ("11" vs "99") but identical display label ("Special District")
+        panel = pd.DataFrame({
+            "school_id": ["S1", "S2"],
+            "state_fips": ["11", "99"],
+            "state_name": ["Special District", "Special District"],
+            "school_year": ["2022-23", "2022-23"],
+            "is_operational": [True, True],
+            "total_students": [400.0, 600.0],
+            "teacher_fte": [20.0, 30.0],
+        })
+        agg = aggregate_state_time_series(panel)
+        # MUST remain 2 separate entities, NEVER merged because display labels match
+        assert len(agg) == 2
+        fips_codes = set(agg["state_fips"].tolist())
+        assert fips_codes == {"11", "99"}
+
+        row_11 = agg[agg["state_fips"] == "11"].iloc[0]
+        row_99 = agg[agg["state_fips"] == "99"].iloc[0]
+        assert row_11["total_students"] == pytest.approx(400.0)
+        assert row_99["total_students"] == pytest.approx(600.0)
+        assert row_11["state_name"] == "Special District"
+        assert row_99["state_name"] == "Special District"
+
+    def test_backtesting_and_projections_keyed_by_fips_with_display_preservation(self) -> None:
+        # Multi-year series for two states keyed by state_fips
+        years = ["2018-19", "2019-20", "2020-21", "2021-22", "2022-23"]
+        rows = []
+        for yr_idx, yr in enumerate(years):
+            rows.append({
+                "state_fips": "06",
+                "state_name": "California",
+                "school_year": yr,
+                "total_students": 1000.0 + yr_idx * 20.0,
+                "teacher_fte": 50.0 + yr_idx * 1.0,
+            })
+            rows.append({
+                "state_fips": "48",
+                "state_name": "Texas",
+                "school_year": yr,
+                "total_students": 2000.0 + yr_idx * 30.0,
+                "teacher_fte": 100.0 + yr_idx * 1.5,
+            })
+        series_df = pd.DataFrame(rows)
+
+        # 1. Backtesting execution keyed on state_fips
+        preds, summary, exclusions = run_walk_forward_backtest(
+            series_df,
+            target_col="total_students",
+            entity_col="state_fips",
+            display_col="state_name",
+        )
+        assert not preds.empty
+        assert not summary.empty
+        assert exclusions.empty
+        assert "state_fips" in preds.columns
+        assert "state_name" in preds.columns
+        assert set(preds["state_fips"].unique()) == {"06", "48"}
+        assert set(preds["state_name"].unique()) == {"California", "Texas"}
+
+        # 2. Projections execution keyed on state_fips
+        projs = generate_projection_scenarios(
+            series_df,
+            target_col="total_students",
+            entity_col="state_fips",
+            display_col="state_name",
+        )
+        assert len(projs) == 2
+        assert "state_fips" in projs.columns
+        assert "state_name" in projs.columns
+        assert set(projs["state_fips"].unique()) == {"06", "48"}
+        assert set(projs["state_name"].unique()) == {"California", "Texas"}
+
+        ca_proj = projs[projs["state_fips"] == "06"].iloc[0]
+        tx_proj = projs[projs["state_fips"] == "48"].iloc[0]
+        assert ca_proj["baseline_projection"] == pytest.approx(1080.0)  # Naive from 2022-23
+        assert tx_proj["baseline_projection"] == pytest.approx(2120.0)  # Naive from 2022-23
+        assert ca_proj["state_name"] == "California"
+        assert tx_proj["state_name"] == "Texas"

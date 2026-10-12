@@ -46,14 +46,17 @@ DEFAULT_CANDIDATE_MODELS: list[str] = [
 def aggregate_state_time_series(
     panel_df: pd.DataFrame,
     target_cols: Sequence[str] = ("total_students", "teacher_fte"),
-    state_col: str = "state_name",
+    state_col: str = "state_fips",
+    display_col: str | None = "state_name",
     year_col: str = "school_year",
     operational_col: str = "is_operational",
     operational_only: bool = True,
 ) -> pd.DataFrame:
     """Aggregate school-level panel data into state-level annual time series with reporting completeness metadata.
 
-    In accordance with config/quality_rules.yaml:
+    In accordance with config/forecasting.yaml and config/quality_rules.yaml:
+      - Uses canonical state_fips (FIPST) as internal jurisdiction entity key.
+      - Preserves state_name as display field when present in panel_df.
       - Reported values are summed.
       - Missing values are NOT coerced to zero; if zero schools report, state sum is NaN.
       - Explicit completeness metrics are generated for each target column:
@@ -66,7 +69,8 @@ def aggregate_state_time_series(
     Args:
         panel_df: Input school-year analytical panel.
         target_cols: Target variables to aggregate.
-        state_col: Geographic aggregation key column.
+        state_col: Geographic aggregation key column (default: 'state_fips').
+        display_col: Display name column to retain (default: 'state_name').
         year_col: School year temporal column.
         operational_col: Boolean operational status column.
         operational_only: If True, restricts aggregation to active operational cohort.
@@ -76,20 +80,30 @@ def aggregate_state_time_series(
     """
     df = panel_df.copy()
 
+    # Determine effective grouping key (allow fallback to display_col if state_col missing from legacy mock)
+    effective_state_col = state_col
+    if effective_state_col not in df.columns and display_col and display_col in df.columns:
+        effective_state_col = display_col
+
     if operational_only and operational_col in df.columns:
         df = df[df[operational_col].fillna(False).astype(bool)]
 
     # Group by state and school year
     records: list[dict[str, Any]] = []
 
-    for (state, year), grp in df.groupby([state_col, year_col]):
+    for (state, year), grp in df.groupby([effective_state_col, year_col]):
         total_schools = len(grp)
         row: dict[str, Any] = {
-            state_col: state,
-            year_col: year,
-            "school_count": total_schools,
-            "contributing_operational_school_count": total_schools,
+            effective_state_col: state,
         }
+
+        if display_col and display_col in grp.columns and display_col != effective_state_col:
+            display_vals = grp[display_col].dropna()
+            row[display_col] = display_vals.iloc[0] if len(display_vals) > 0 else str(state)
+
+        row[year_col] = year
+        row["school_count"] = total_schools
+        row["contributing_operational_school_count"] = total_schools
 
         for col in target_cols:
             if col in grp.columns:
@@ -128,7 +142,7 @@ def aggregate_state_time_series(
 
     res_df = pd.DataFrame(records)
     if not res_df.empty:
-        res_df = res_df.sort_values([state_col, year_col]).reset_index(drop=True)
+        res_df = res_df.sort_values([effective_state_col, year_col]).reset_index(drop=True)
     return res_df
 
 
@@ -146,7 +160,8 @@ def get_expected_prior_year(year_str: str) -> str:
 def run_walk_forward_backtest(
     aggregate_df: pd.DataFrame,
     target_col: str = "total_students",
-    entity_col: str = "state_name",
+    entity_col: str = "state_fips",
+    display_col: str | None = "state_name",
     year_col: str = "school_year",
     folds: list[dict[str, Any]] | None = None,
     model_names: Sequence[str] | None = None,
@@ -161,7 +176,8 @@ def run_walk_forward_backtest(
     Args:
         aggregate_df: State- or district-level longitudinal DataFrame with completeness columns.
         target_col: Target variable name.
-        entity_col: Entity identifier column (e.g. 'state_name').
+        entity_col: Entity identifier column (default: 'state_fips').
+        display_col: Display name column to retain (default: 'state_name').
         year_col: School year column.
         folds: List of fold specifications (defaults to DEFAULT_FOLDS).
         model_names: List of model names to evaluate (defaults to DEFAULT_CANDIDATE_MODELS).
@@ -176,6 +192,21 @@ def run_walk_forward_backtest(
         folds = DEFAULT_FOLDS
     if model_names is None:
         model_names = DEFAULT_CANDIDATE_MODELS
+
+    # Determine effective grouping key (allow fallback to display_col if entity_col missing from legacy mock)
+    effective_entity_col = entity_col
+    if effective_entity_col not in aggregate_df.columns and display_col and display_col in aggregate_df.columns:
+        effective_entity_col = display_col
+
+    # Build entity -> display name mapping if display_col is present
+    entity_display_map: dict[Any, str] = {}
+    if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+        entity_display_map = (
+            aggregate_df.dropna(subset=[display_col])
+            .groupby(effective_entity_col)[display_col]
+            .first()
+            .to_dict()
+        )
 
     pred_records: list[dict[str, Any]] = []
     exclusion_records: list[dict[str, Any]] = []
@@ -192,25 +223,30 @@ def run_walk_forward_backtest(
 
         # Map test data by entity
         test_records_by_entity = {
-            row[entity_col]: row
+            row[effective_entity_col]: row
             for _, row in test_data.iterrows()
         }
 
         # Unique entities observed across the aggregate dataset
-        all_entities = sorted(aggregate_df[entity_col].unique())
+        all_entities = sorted(aggregate_df[effective_entity_col].unique())
 
         for entity in all_entities:
+            disp_name = entity_display_map.get(entity, str(entity))
+
             # 1. Check test year ground truth
             test_row = test_records_by_entity.get(entity)
             if test_row is None:
-                exclusion_records.append({
+                excl_row: dict[str, Any] = {
                     "fold_id": fold_id,
                     "test_year": test_year,
                     "entity_id": entity,
-                    entity_col: entity,
-                    "target_col": target_col,
-                    "reason": f"No data recorded in test year {test_year}",
-                })
+                    effective_entity_col: entity,
+                }
+                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                    excl_row[display_col] = disp_name
+                excl_row["target_col"] = target_col
+                excl_row["reason"] = f"No data recorded in test year {test_year}"
+                exclusion_records.append(excl_row)
                 continue
 
             actual_val = test_row.get(target_col)
@@ -218,30 +254,36 @@ def run_walk_forward_backtest(
             test_cov = test_row.get(coverage_col, 100.0)
 
             if pd.isna(actual_val) or actual_val <= 0.0:
-                exclusion_records.append({
+                excl_row = {
                     "fold_id": fold_id,
                     "test_year": test_year,
                     "entity_id": entity,
-                    entity_col: entity,
-                    "target_col": target_col,
-                    "reason": f"No reported ground truth in test year {test_year} (actual value is null or zero)",
-                })
+                    effective_entity_col: entity,
+                }
+                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                    excl_row[display_col] = disp_name
+                excl_row["target_col"] = target_col
+                excl_row["reason"] = f"No reported ground truth in test year {test_year} (actual value is null or zero)"
+                exclusion_records.append(excl_row)
                 continue
 
             # 2. Check training history
-            entity_train = train_data[train_data[entity_col] == entity].sort_values(year_col)
+            entity_train = train_data[train_data[effective_entity_col] == entity].sort_values(year_col)
             valid_train = entity_train.dropna(subset=[target_col])
             valid_train = valid_train[valid_train[target_col] > 0.0]
 
             if len(valid_train) == 0:
-                exclusion_records.append({
+                excl_row = {
                     "fold_id": fold_id,
                     "test_year": test_year,
                     "entity_id": entity,
-                    entity_col: entity,
-                    "target_col": target_col,
-                    "reason": f"Zero valid reported training observations in {train_years}",
-                })
+                    effective_entity_col: entity,
+                }
+                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                    excl_row[display_col] = disp_name
+                excl_row["target_col"] = target_col
+                excl_row["reason"] = f"Zero valid reported training observations in {train_years}"
+                exclusion_records.append(excl_row)
                 continue
 
             hist_years = valid_train[year_col].tolist()
@@ -250,11 +292,15 @@ def run_walk_forward_backtest(
 
             # 3. Check for immediate prior year continuity
             if latest_train_year != expected_prior_year:
-                exclusion_records.append({
+                excl_row = {
                     "fold_id": fold_id,
                     "test_year": test_year,
                     "entity_id": entity,
-                    entity_col: entity,
+                    effective_entity_col: entity,
+                }
+                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                    excl_row[display_col] = disp_name
+                excl_row.update({
                     "target_col": target_col,
                     "expected_prior_year": expected_prior_year,
                     "actual_latest_train_year": latest_train_year,
@@ -263,6 +309,7 @@ def run_walk_forward_backtest(
                         f"in training history; latest observed training year is {latest_train_year}."
                     ),
                 })
+                exclusion_records.append(excl_row)
                 continue
 
             # Check if training series has interior gaps
@@ -288,11 +335,15 @@ def run_walk_forward_backtest(
                     else np.nan
                 )
 
-                pred_records.append({
+                pred_row: dict[str, Any] = {
                     "fold_id": fold_id,
                     "fold_description": desc,
                     "test_year": test_year,
-                    entity_col: entity,
+                    effective_entity_col: entity,
+                }
+                if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+                    pred_row[display_col] = disp_name
+                pred_row.update({
                     "target_col": target_col,
                     "actual": float(actual_val),
                     "model_name": model_name,
@@ -305,6 +356,7 @@ def run_walk_forward_backtest(
                     "has_interior_gaps": has_interior_gaps,
                     "test_coverage_pct": test_cov,
                 })
+                pred_records.append(pred_row)
 
     pred_df = pd.DataFrame(pred_records)
     exclusions_df = pd.DataFrame(exclusion_records)

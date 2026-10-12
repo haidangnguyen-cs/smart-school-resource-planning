@@ -28,7 +28,8 @@ DEFAULT_SCENARIO_BANDS: list[dict[str, Any]] = [
 def generate_projection_scenarios(
     aggregate_df: pd.DataFrame,
     target_col: str = "total_students",
-    entity_col: str = "state_name",
+    entity_col: str = "state_fips",
+    display_col: str | None = "state_name",
     year_col: str = "school_year",
     target_projection_year: str = "2023-24",
     expected_latest_year: str = "2022-23",
@@ -46,7 +47,8 @@ def generate_projection_scenarios(
     Args:
         aggregate_df: State- or district-level longitudinal DataFrame.
         target_col: Column to project (e.g. 'total_students' or 'teacher_fte').
-        entity_col: Entity identifier column.
+        entity_col: Entity identifier column (default: 'state_fips').
+        display_col: Display name column to retain (default: 'state_name').
         year_col: School year column.
         target_projection_year: Canonical label for projection period (default: '2023-24').
         expected_latest_year: Expected most recent historical year (default: '2022-23').
@@ -59,10 +61,25 @@ def generate_projection_scenarios(
     if scenario_bands is None:
         scenario_bands = DEFAULT_SCENARIO_BANDS
 
-    records: list[dict[str, Any]] = []
-    sorted_df = aggregate_df.sort_values([entity_col, year_col])
+    # Determine effective grouping key (allow fallback to display_col if entity_col missing from legacy mock)
+    effective_entity_col = entity_col
+    if effective_entity_col not in aggregate_df.columns and display_col and display_col in aggregate_df.columns:
+        effective_entity_col = display_col
 
-    for entity, grp in sorted_df.groupby(entity_col):
+    # Build entity -> display name mapping if display_col is present
+    entity_display_map: dict[Any, str] = {}
+    if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+        entity_display_map = (
+            aggregate_df.dropna(subset=[display_col])
+            .groupby(effective_entity_col)[display_col]
+            .first()
+            .to_dict()
+        )
+
+    records: list[dict[str, Any]] = []
+    sorted_df = aggregate_df.sort_values([effective_entity_col, year_col])
+
+    for entity, grp in sorted_df.groupby(effective_entity_col):
         # Filter to non-null, positive values
         valid_grp = grp.dropna(subset=[target_col])
         valid_grp = valid_grp[valid_grp[target_col] > 0.0]
@@ -70,6 +87,7 @@ def generate_projection_scenarios(
         if len(valid_grp) == 0:
             continue
 
+        disp_name = entity_display_map.get(entity, str(entity))
         history = valid_grp[target_col].tolist()
         history_years = valid_grp[year_col].tolist()
         latest_actual = history[-1]
@@ -131,7 +149,12 @@ def generate_projection_scenarios(
             final_hist_max_bound = float(np.nan)
 
         row: dict[str, Any] = {
-            entity_col: entity,
+            effective_entity_col: entity,
+        }
+        if display_col and display_col in aggregate_df.columns and display_col != effective_entity_col:
+            row[display_col] = disp_name
+
+        row.update({
             "target_col": target_col,
             "projection_year": target_projection_year,
             "model_applied": model_name,
@@ -149,7 +172,7 @@ def generate_projection_scenarios(
             "hist_avg_yoy_growth_pct": avg_hist_growth,
             "scenario_hist_min_bound": final_hist_min_bound,
             "scenario_hist_max_bound": final_hist_max_bound,
-        }
+        })
 
         # Compute scenario bands relative to baseline projection
         for band in scenario_bands:

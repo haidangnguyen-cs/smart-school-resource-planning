@@ -113,22 +113,38 @@ def run_forecasting_pipeline(
     logger.info("Loading analytical panel from %s...", panel_path)
     panel_df = pd.read_parquet(panel_path)
     observed_years = sorted(panel_df["school_year"].unique())
-    all_states = sorted(panel_df["state_name"].unique())
+
+    # Canonical internal state entity key (FIPST -> state_fips) and display field (state_name)
+    state_key_col = "state_fips" if "state_fips" in panel_df.columns else "state_name"
+    display_col = "state_name" if "state_name" in panel_df.columns and state_key_col != "state_name" else None
+
+    all_states = sorted(panel_df[state_key_col].unique())
+    fips_to_name: dict[Any, str] = {}
+    if display_col:
+        fips_to_name = panel_df.dropna(subset=[display_col]).groupby(state_key_col)[display_col].first().to_dict()
+
     logger.info(
-        "Loaded panel: %d records across years: %s (%d states)",
+        "Loaded panel: %d records across years: %s (%d states, entity key: %s)",
         len(panel_df),
         observed_years,
         len(all_states),
+        state_key_col,
     )
 
     # Audit grid completeness (expected vs actual state-years)
     expected_grid_size = len(all_states) * len(observed_years)
-    state_year_pairs = set(zip(panel_df["state_name"], panel_df["school_year"], strict=False))
+    state_year_pairs = set(zip(panel_df[state_key_col], panel_df["school_year"], strict=False))
     missing_grid_pairs = []
     for s in all_states:
         for y in observed_years:
             if (s, y) not in state_year_pairs:
-                missing_grid_pairs.append({"state_name": s, "school_year": y})
+                grid_info: dict[str, Any] = {
+                    state_key_col: s,
+                    "school_year": y,
+                }
+                if display_col:
+                    grid_info[display_col] = fips_to_name.get(s, str(s))
+                missing_grid_pairs.append(grid_info)
 
     logger.info(
         "Grid check: %d observed state-year combinations out of %d expected (missing: %d: %s)",
@@ -143,12 +159,14 @@ def run_forecasting_pipeline(
     state_agg = aggregate_state_time_series(
         panel_df,
         target_cols=["total_students", "teacher_fte"],
+        state_col=state_key_col,
+        display_col=display_col,
         operational_only=True,
     )
     logger.info(
         "Constructed state time series: %d state-year observations across %d states.",
         len(state_agg),
-        state_agg["state_name"].nunique(),
+        state_agg[state_key_col].nunique(),
     )
 
     # Save state aggregates
@@ -159,12 +177,16 @@ def run_forecasting_pipeline(
     logger.info("Saved state annual aggregates to %s and %s", state_agg_csv.name, state_agg_pq.name)
 
     # Audit zero-reported state-years
+    audit_cols = [state_key_col, "school_year"]
+    if display_col and display_col in state_agg.columns:
+        audit_cols = [state_key_col, display_col, "school_year"]
+
     zero_reported_audit = {
         "total_students": state_agg[state_agg["reported_total_students_count"] == 0][
-            ["state_name", "school_year"]
+            audit_cols
         ].to_dict(orient="records"),
         "teacher_fte": state_agg[state_agg["reported_teacher_fte_count"] == 0][
-            ["state_name", "school_year"]
+            audit_cols
         ].to_dict(orient="records"),
     }
 
@@ -179,7 +201,8 @@ def run_forecasting_pipeline(
         preds, summary, exclusions = run_walk_forward_backtest(
             state_agg,
             target_col=target,
-            entity_col="state_name",
+            entity_col=state_key_col,
+            display_col=display_col,
             year_col="school_year",
             folds=DEFAULT_FOLDS,
             model_names=DEFAULT_CANDIDATE_MODELS,
@@ -223,7 +246,8 @@ def run_forecasting_pipeline(
     proj_students = generate_projection_scenarios(
         state_agg,
         target_col="total_students",
-        entity_col="state_name",
+        entity_col=state_key_col,
+        display_col=display_col,
         year_col="school_year",
         target_projection_year="2023-24",
         expected_latest_year="2022-23",
@@ -233,10 +257,10 @@ def run_forecasting_pipeline(
 
     latest_teachers = (
         state_agg[state_agg["school_year"] == "2022-23"]
-        .set_index("state_name")["teacher_fte"]
+        .set_index(state_key_col)["teacher_fte"]
         .to_dict()
     )
-    proj_students["latest_historical_teacher_fte"] = proj_students["state_name"].map(latest_teachers)
+    proj_students["latest_historical_teacher_fte"] = proj_students[state_key_col].map(latest_teachers)
 
     staffing_scenarios = estimate_implied_staffing_demand(
         proj_students,
@@ -258,15 +282,24 @@ def run_forecasting_pipeline(
 
     eligible_count = int(valid_mask.sum())
     excluded_count = int((~valid_mask).sum())
-    excluded_entities_info = [
-        {
-            "state_name": r["state_name"],
+    excluded_entities_info = []
+    excluded_names = []
+    for _, r in invalid_scenarios.iterrows():
+        entity_id_val = r[state_key_col]
+        disp_val = r.get(display_col, entity_id_val) if display_col else entity_id_val
+        excl_dict: dict[str, Any] = {
+            state_key_col: entity_id_val,
             "latest_historical_year": r["latest_historical_year"],
             "reason": r["projection_status"],
         }
-        for _, r in invalid_scenarios.iterrows()
-    ]
-    excluded_names = sorted(invalid_scenarios["state_name"].tolist())
+        if display_col:
+            excl_dict[display_col] = disp_val
+            excluded_names.append(f"{disp_val} ({entity_id_val})")
+        else:
+            excluded_names.append(str(entity_id_val))
+        excluded_entities_info.append(excl_dict)
+
+    excluded_names.sort()
     coverage_scope = (
         f"{eligible_count} of {len(staffing_scenarios)} states/jurisdictions with valid 2022-23 baseline observations "
         f"(excluding {', '.join(excluded_names)} due to incomplete/stale history)."
@@ -296,6 +329,8 @@ def run_forecasting_pipeline(
         "time_series_properties": {
             "time_series_length": len(observed_years),
             "school_years": observed_years,
+            "entity_identifier_key": state_key_col,
+            "display_name_key": display_col or state_key_col,
             "states_observed": len(all_states),
             "states_observed_count": len(all_states),
             "expected_grid_state_years": expected_grid_size,
