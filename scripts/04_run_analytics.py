@@ -21,18 +21,29 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from school_planning.analytics.descriptive import (
+from school_planning.analytics import (
+    BENCHMARKED_STATUS_LABEL,
+    DEFAULT_TAU_GROWTH_GAP,
+    DEFAULT_TAU_RATIO_RISE,
+    NON_OPERATIONAL_STATUS_LABEL,
+    PRIORITY_1_LABEL,
+    PRIORITY_2_LABEL,
+    PRIORITY_3_LABEL,
+    PRIORITY_4_LABEL,
+    PRIORITY_5_LABEL,
+    PRIORITY_6_LABEL,
+    UNBENCHMARKED_STATUS_LABEL,
+    calculate_school_kpis,
+    classify_resource_pressure,
+    compute_longitudinal_growth,
+    compute_peer_group_p90_thresholds,
+    extract_triage_queue,
     summarize_by_category,
     summarize_distributions,
+    summarize_resource_pressure_by_level,
+    summarize_resource_pressure_by_state,
+    summarize_resource_pressure_tiers,
     summarize_state_aggregates,
-)
-from school_planning.analytics.growth import compute_longitudinal_growth
-from school_planning.analytics.kpis import calculate_school_kpis
-from school_planning.analytics.segmentation import (
-    BENCHMARKED_STATUS_LABEL,
-    NON_OPERATIONAL_STATUS_LABEL,
-    UNBENCHMARKED_STATUS_LABEL,
-    compute_peer_group_p90_thresholds,
 )
 
 logging.basicConfig(
@@ -47,6 +58,8 @@ def run_analytics_pipeline(
     tables_dir: Path | None = None,
     reports_dir: Path | None = None,
     augmented_panel_path: Path | None = None,
+    tau_ratio_rise: float = DEFAULT_TAU_RATIO_RISE,
+    tau_growth_gap: float = DEFAULT_TAU_GROWTH_GAP,
 ) -> dict:
     """Execute complete analytics pipeline on the school-year panel.
 
@@ -55,6 +68,8 @@ def run_analytics_pipeline(
         tables_dir: Destination directory for summary CSV tables.
         reports_dir: Destination directory for JSON summary reports.
         augmented_panel_path: Destination path for augmented analytical panel.
+        tau_ratio_rise: Provisional threshold for rapidly rising ratio (percent YoY).
+        tau_growth_gap: Provisional threshold for enrollment-staffing growth gap (percentage points).
 
     Returns:
         Structured dictionary of EDA summary metrics and empirical findings.
@@ -92,12 +107,20 @@ def run_analytics_pipeline(
     logger.info("Calculating empirical peer-group P90 ratio baselines on active operational cohort...")
     df, p90_thresholds = compute_peer_group_p90_thresholds(df)
 
-    # 4. Generate distribution profiling (operational cohort)
+    # 4. Classify facilities into 6-tier resource pressure hierarchy
+    logger.info("Classifying facilities into 6-tier resource pressure hierarchy...")
+    df = classify_resource_pressure(
+        df,
+        tau_ratio_rise=tau_ratio_rise,
+        tau_growth_gap=tau_growth_gap,
+    )
+
+    # 5. Generate distribution profiling (operational cohort)
     logger.info("Profiling distribution metrics on operational cohort...")
     dist_df = summarize_distributions(df)
     dist_df.to_csv(tables_dir / "kpi_distributions.csv")
 
-    # 5. Categorical summaries (grouped by [school_year, category] on operational cohort)
+    # 6. Categorical summaries (grouped by [school_year, category] on operational cohort)
     logger.info("Generating categorical breakdowns by school year on operational cohort...")
     if "school_level" in df.columns:
         level_summary = summarize_by_category(df, "school_level")
@@ -116,10 +139,29 @@ def run_analytics_pipeline(
         status_summary = summarize_by_category(df, "school_status", operational_only=False)
         status_summary.to_csv(tables_dir / "summary_by_school_status.csv", index=False)
 
-    # 6. State-level aggregates (operational cohort)
+    # 7. State-level aggregates (operational cohort)
     if "state_fips" in df.columns:
         state_summary = summarize_state_aggregates(df)
         state_summary.to_csv(tables_dir / "state_aggregates.csv", index=False)
+
+    # 8. Resource pressure summaries and triage queues
+    logger.info("Generating resource pressure summary tables and triage queues...")
+    rp_tier_summary = summarize_resource_pressure_tiers(df)
+    rp_tier_summary.to_csv(tables_dir / "resource_pressure_tier_summary.csv", index=False)
+
+    if "state_fips" in df.columns:
+        rp_state_summary = summarize_resource_pressure_by_state(df)
+        rp_state_summary.to_csv(tables_dir / "resource_pressure_by_state.csv", index=False)
+
+    if "school_level" in df.columns:
+        rp_level_summary = summarize_resource_pressure_by_level(df)
+        rp_level_summary.to_csv(tables_dir / "resource_pressure_by_level.csv", index=False)
+
+    p1_queue = extract_triage_queue(df, priority=1)
+    p1_queue.to_csv(tables_dir / "resource_pressure_triage_queue_p1.csv", index=False)
+
+    p2_queue = extract_triage_queue(df, priority=2)
+    p2_queue.to_csv(tables_dir / "resource_pressure_triage_queue_p2.csv", index=False)
 
     # Save augmented panel back to processed directory (preserving all full panel rows)
     if augmented_panel_path is None:
@@ -223,6 +265,74 @@ def run_analytics_pipeline(
         "elapsed_seconds": round(time.time() - start_time, 2),
     }
 
+    tier_counts = {
+        tier: int((df["resource_pressure_tier"] == tier).sum())
+        for tier in [
+            PRIORITY_1_LABEL,
+            PRIORITY_2_LABEL,
+            PRIORITY_3_LABEL,
+            PRIORITY_4_LABEL,
+            PRIORITY_5_LABEL,
+            PRIORITY_6_LABEL,
+        ]
+    }
+    tier_operational_counts = {
+        tier: int(((df["resource_pressure_tier"] == tier) & operational_mask).sum())
+        for tier in [
+            PRIORITY_1_LABEL,
+            PRIORITY_2_LABEL,
+            PRIORITY_3_LABEL,
+            PRIORITY_4_LABEL,
+            PRIORITY_5_LABEL,
+            PRIORITY_6_LABEL,
+        ]
+    }
+    tier_percentages_of_panel = {
+        tier: round(count / total_records * 100, 2) if total_records > 0 else 0.0
+        for tier, count in tier_counts.items()
+    }
+    tier_percentages_of_operational = {
+        tier: round(op_count / operational_records * 100, 2) if operational_records > 0 else 0.0
+        for tier, op_count in tier_operational_counts.items()
+    }
+    tier_unique_schools = {
+        tier: int(df.loc[df["resource_pressure_tier"] == tier, "school_id"].nunique())
+        for tier in tier_counts
+    }
+
+    rp_summary = {
+        "panel_records": total_records,
+        "operational_records": operational_records,
+        "tau_ratio_rise": tau_ratio_rise,
+        "tau_growth_gap": tau_growth_gap,
+        "tier_counts": tier_counts,
+        "tier_operational_counts": tier_operational_counts,
+        "tier_percentages_of_panel": tier_percentages_of_panel,
+        "tier_percentages_of_operational": tier_percentages_of_operational,
+        "tier_unique_schools": tier_unique_schools,
+        "provisional_threshold_notice": (
+            "tau_ratio_rise (+15.0%) and tau_growth_gap (+5.0 pp) are provisional candidate parameters "
+            "for decision-support prototyping, subject to stakeholder calibration before operational use."
+        ),
+        "unbenchmarked_stable_interpretation_caveat": (
+            "For schools with peer_group_status == 'Unbenchmarked / Specialized Peer Group', "
+            "assignment to Priority 6 (Stable / Balanced) denotes solely that available longitudinal trend indicators "
+            "did not cross provisional escalation thresholds. It does NOT imply or certify that the school's absolute "
+            "staffing levels or student-to-teacher ratio have been shown to be adequate, balanced, or compliant with "
+            "programmatic guidelines."
+        ),
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "elapsed_seconds": round(time.time() - start_time, 2),
+    }
+
+    rp_report_path = reports_dir / "resource_pressure_summary.json"
+    with open(rp_report_path, "w", encoding="utf-8") as f:
+        json.dump(rp_summary, f, indent=2)
+    logger.info("Resource pressure summary report written to %s.", rp_report_path)
+
+    eda_summary["resource_pressure_tier_counts"] = tier_counts
+    eda_summary["resource_pressure_tier_operational_counts"] = tier_operational_counts
+
     report_path = reports_dir / "eda_summary.json"
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(eda_summary, f, indent=2)
@@ -236,12 +346,26 @@ def main():
     parser.add_argument("--panel-path", type=Path, default=None, help="Path to school_year_panel.parquet")
     parser.add_argument("--tables-dir", type=Path, default=None, help="Output directory for CSV tables")
     parser.add_argument("--reports-dir", type=Path, default=None, help="Output directory for reports")
+    parser.add_argument(
+        "--tau-ratio-rise",
+        type=float,
+        default=DEFAULT_TAU_RATIO_RISE,
+        help="Provisional threshold for YoY ratio rise (percent)",
+    )
+    parser.add_argument(
+        "--tau-growth-gap",
+        type=float,
+        default=DEFAULT_TAU_GROWTH_GAP,
+        help="Provisional threshold for growth gap (percentage points)",
+    )
     args = parser.parse_args()
 
     run_analytics_pipeline(
         panel_path=args.panel_path,
         tables_dir=args.tables_dir,
         reports_dir=args.reports_dir,
+        tau_ratio_rise=args.tau_ratio_rise,
+        tau_growth_gap=args.tau_growth_gap,
     )
 
 
