@@ -136,7 +136,7 @@ uv run python -c "from school_planning.pipeline.run_pipeline import run_pipeline
 Launch the dashboard locally:
 
 ```powershell
-uv run streamlit run app/streamlit_app.py
+uv run python -m streamlit run app/streamlit_app.py
 ```
 
 By default, the application runs on `http://localhost:8501`.
@@ -163,7 +163,7 @@ By default, the application runs on `http://localhost:8501`.
 Run the automated verification suite:
 
 ```powershell
-# 1. Run all unit and integration tests (248 tests)
+# 1. Run all unit and integration tests (255 tests)
 uv run pytest -v
 
 # 2. Check code quality and style
@@ -231,7 +231,7 @@ When a new academic school year of NCES CCD data is released (e.g., `2023-24`):
 * **Issue**: Port 8501 is occupied or running in a headless server environment.
 * **Resolution**: Run with explicit port and headless flags:
   ```powershell
-  uv run streamlit run app/streamlit_app.py --server.port 8502 --server.headless true
+  uv run python -m streamlit run app/streamlit_app.py --server.port 8502 --server.headless true
   ```
 
 ### 8.5 Source Manifest Verification and Quality Audit Inspection

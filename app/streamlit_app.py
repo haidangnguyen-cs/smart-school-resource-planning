@@ -486,7 +486,7 @@ def main() -> None:
                 1. <span class="badge-tag badge-danger">Priority 1: Administrative Review</span><br>
                    Missing student/teacher data, zero reported teachers, or campus reconfigurations.
                 2. <span class="badge-tag badge-warning">Priority 2: Extreme Pressure (P90)</span><br>
-                   Active regular schools at or above 90th percentile ratio of (State × School Level).
+                   Active regular schools at or above 90th percentile ratio of national peer group (School Year × School Level).
                 3. <span class="badge-tag badge-warning">Priority 3: Rapid Ratio Escalation</span><br>
                    Year-over-year ratio growth crossing provisional threshold (tau_ratio_rise = +15.0%).
                 4. <span class="badge-tag badge-primary">Priority 4: Divergent Growth Gap</span><br>

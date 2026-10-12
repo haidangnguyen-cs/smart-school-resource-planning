@@ -98,7 +98,7 @@ To prevent premature administrative intervention based on unverified raw numbers
 
 ### Immediate Operational Triage Priorities:
 * **Priority 1 (Administrative Review — {p1_count:,} schools, {p1_pct:.2f}%)**: Requires data verification before any budgetary decisions. This tier flags boundary changes, reconfigurations, zero reported ratios, and missing teacher records.
-* **Priority 2 (Extreme Pressure — {p2_count:,} schools, {p2_pct:.2f}%)**: Operational regular schools whose student-to-teacher ratio meets or exceeds the **90th percentile (P90)** of their state and school-level peer group, representing targeted candidates for localized staffing intervention.
+* **Priority 2 (Extreme Pressure — {p2_count:,} schools, {p2_pct:.2f}%)**: Operational regular schools whose student-to-teacher ratio meets or exceeds the **90th percentile (P90)** of their national peer group by school level and school year, representing targeted candidates for localized staffing intervention.
 * **Priority 5 (Unassessed Growth — {p5_count:,} schools, {p5_pct:.2f}%)**: Schools lacking a consecutive longitudinal baseline (newly opened, reconfigured, or unmerged), explicitly separated from stable schools to eliminate false assurances.
 
 ---
@@ -237,7 +237,7 @@ Classification executes via a deterministic, hierarchical priority waterfall app
        v
 [Priority 2: Extreme Pressure (P90)]
   - Regular school in valid peer group
-  - student_teacher_ratio >= 90th percentile of (State x Level)
+  - student_teacher_ratio >= 90th percentile of national peer group (School Year x Level)
        | (False)
        v
 [Priority 3: Rapid Ratio Escalation]
@@ -275,15 +275,13 @@ Top 15 Jurisdictions by 2022–23 Enrollment:
 * **Macro Feasibility (Supported)**: State-level aggregation pools variance, stabilizing time-series signals.
 
 ### 5.2 Chronological Walk-Forward Backtest Results
-Walk-forward evaluation with expanding training windows evaluated one-step ahead performance:
-* Fold 1: Train 2018–19 -> Test 2019–20
-* Fold 2: Train 2018–19..2019–20 -> Test 2020–21
-* Fold 3: Train 2018–19..2020–21 -> Test 2021–22
-* Fold 4: Train 2018–19..2021–22 -> Test 2022–23
+Walk-forward evaluation with expanding training windows evaluated one-step ahead performance across two sequential validation folds:
+* Fold 1: Train [2018–19, 2019–20, 2020–21] -> Test 2021–22 (post-shock recovery validation step)
+* Fold 2: Train [2018–19, 2019–20, 2020–21, 2021–22] -> Test 2022–23 (final holdout validation step)
 
 {bt_table_md}
 
-**Key Finding**: Naive persistence and simple linear drift achieved the lowest error across all evaluation folds (WAPE 1.1% to 1.5%), proving that simple transparent baselines are optimal for constrained annual educational series.
+**Key Finding**: Naive persistence (y_t) and simple linear drift achieved the lowest error across evaluation folds (e.g., 1.02% pooled WAPE across 110 state-year test observations for student enrollment under naive persistence), confirming that simple transparent baselines are optimal for constrained annual educational series. Note: WAPE is a weighted absolute percentage error (loss metric), not classification accuracy.
 
 ---
 
@@ -291,6 +289,7 @@ Walk-forward evaluation with expanding training windows evaluated one-step ahead
 
 {proj_table_md}
 
+*Methodological Note: Ground truth for 2023–24 is absent from this NCES dataset (covering 2018–19 through 2022–23). These outputs represent unverified retrospective baseline projections and hypothetical policy scenario bands (±1%, ±2%), not accuracy-evaluated forecasts.*
 *Exclusions Note: Jurisdictions without valid 2022–23 reporting (e.g. American Samoa, Guam) are excluded from national aggregates to prevent distortion.*
 """
     return md
@@ -400,7 +399,7 @@ def generate_presentation_outline() -> str:
 * **Key Talking Points**:
   - Ratio variations across Primary, Middle, High, and Specialized facilities.
   - State-level disparities: high-ratio jurisdictions vs. low-ratio states.
-  - Peer group normalization (State x Level) ensures fair comparisons.
+  - Peer group normalization (School Year x Level) ensures fair comparisons.
 
 ### Slide 6: Forecasting Feasibility: Honest Science vs. False Precision
 * **Visual**: Model Comparison Chart (`outputs/figures/backtest_model_comparison.png`)

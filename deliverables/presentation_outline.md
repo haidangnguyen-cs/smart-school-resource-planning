@@ -40,7 +40,7 @@
 * **Key Talking Points**:
   - Ratio variations across Primary, Middle, High, and Specialized facilities.
   - State-level disparities: high-ratio jurisdictions vs. low-ratio states.
-  - Peer group normalization (State x Level) ensures fair comparisons.
+  - Peer group normalization (School Year x Level) ensures fair comparisons.
 
 ### Slide 6: Forecasting Feasibility: Honest Science vs. False Precision
 * **Visual**: Model Comparison Chart (`outputs/figures/backtest_model_comparison.png`)

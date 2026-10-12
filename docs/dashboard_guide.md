@@ -21,7 +21,7 @@ The dashboard translates complex administrative datasets (Directory, Membership,
 To launch the Streamlit dashboard in your local browser:
 
 ```powershell
-uv run streamlit run app/streamlit_app.py
+uv run python -m streamlit run app/streamlit_app.py
 ```
 
 By default, the dashboard initializes on `http://localhost:8501`.
@@ -71,7 +71,7 @@ The sidebar persists across all dashboard pages, enabling dynamic slicing of the
 * **Triage Waterfall**: Visual breakdown of the six-tier deterministic classification algorithm.
 * **Interactive Queues**:
   * **Priority 1 (Administrative Review Queue)**: Displays facilities with missing data, reported 0.0 teacher FTE, negative ratios, or boundary reconfigurations.
-  * **Priority 2 (Extreme Pressure Queue)**: Active regular schools meeting or exceeding the 90th percentile (P90) ratio of their state and school-level peer group.
+  * **Priority 2 (Extreme Pressure Queue)**: Active regular schools meeting or exceeding the 90th percentile (P90) ratio of their national peer group by school level and school year.
 * **Queue Filtering Consistency**: Queue records are filtered by the reference school year and the active sidebar filters (state FIPS, school level, charter status, operational status). The displayed count, table rows, and downloadable CSV all represent the **identical filtered records**.
 * **Graceful Missing-File Handling**: If queue CSV files are missing or empty, an informative warning or empty state is rendered without unhandled exceptions.
 
@@ -97,7 +97,7 @@ The sidebar persists across all dashboard pages, enabling dynamic slicing of the
 | **Enrollment Growth (YoY %)** | `[(students_t - students_t-1) / students_t-1] * 100` | Requires consecutive presence of the same school_id. |
 | **Staffing Growth (YoY %)** | `[(teachers_t - teachers_t-1) / teachers_t-1] * 100` | Requires consecutive presence and positive prior-year FTE. |
 | **Growth Gap (pp)** | `Enrollment Growth (%) - Staffing Growth (%)` | Positive values indicate enrollment outpacing staffing. |
-| **Peer P90 Threshold** | 90th percentile of `(State × School Level)` | Evaluated on operational regular schools with valid ratios. |
+| **Peer P90 Threshold** | 90th percentile of `(School Year × School Level)` | Evaluated on operational regular schools with valid ratios. |
 
 ---
 

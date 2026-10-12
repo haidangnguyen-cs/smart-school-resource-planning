@@ -17,7 +17,7 @@ State Education Agencies (SEAs), district superintendents, and school boards fac
 
 This system provides:
 1. **Longitudinal System Auditing**: Tracks national and state-level enrollment and staffing trajectories across 509,924 school-year observations.
-2. **Deterministic Resource Pressure Triage**: Implements a transparent, six-tier decision hierarchy that separates administrative non-reporting from empirical extreme pressure (P90 of state peer groups).
+2. **Deterministic Resource Pressure Triage**: Implements a transparent, six-tier decision hierarchy that separates administrative non-reporting from empirical extreme pressure (P90 of national instructional level peer groups).
 3. **Constrained Scenario Planning**: Delivers statistically defensible state-level retrospective forecasts and policy-driven implied staffing demand calculations.
 4. **Interactive Decision Support**: Empowers stakeholders with a multi-page Streamlit application and comprehensive executive reporting deliverables.
 
@@ -30,8 +30,8 @@ This system provides:
 * **Data Cleaning & Panel Construction (`src/school_planning/cleaning/`, `transformation/`)**: Deterministic recoding of NCES negative codes (`-1`, `-2`, `-9`, `-11` -> `NaN`), zero-teacher anomaly flags, and preservation of common-school cohorts for period-over-period growth.
 * **Deterministic Triage Hierarchy (`src/school_planning/analytics/`)**: Six mutually exclusive priority tiers:
   * **Priority 1**: Administrative Data Review (missing values, 0.0 teacher FTE, boundary/agency changes, negative ratios).
-  * **Priority 2**: Extreme Pressure (operational regular schools at or above the 90th percentile of their state and school-level peer group).
-  * **Priority 3**: Rapidly Rising Ratio ($\ge 10\%$ annual increase).
+  * **Priority 2**: Extreme Pressure (operational regular schools at or above the 90th percentile of their national peer group by school level and year).
+  * **Priority 3**: Rapidly Rising Ratio ($\ge 15.0\%$ annual increase, provisional baseline).
   * **Priority 4**: Staffing Deficit Growth Gap (enrollment growth outpacing staffing growth by $\ge 5$ percentage points).
   * **Priority 5**: Growth Unassessed (new schools, boundary reconfigurations, or missing prior-year data).
   * **Priority 6**: Stable / Balanced Trend (verified non-escalating indicators).
@@ -93,7 +93,7 @@ smart-school-resource-planning/
 │   ├── reporting/                    # Tables, charts, report assembly
 │   ├── transformation/               # Directory, membership, staff normalization
 │   └── validation/                   # Schema, key, relationship, business rule checks
-├── tests/                            # Automated test suite (248 tests)
+├── tests/                            # Automated test suite (255 tests)
 │   ├── fixtures/                     # Synthetic test CSVs
 │   ├── integration/                  # Join integrity & end-to-end pipeline tests
 │   └── unit/                         # Focused unit test suites
@@ -124,7 +124,7 @@ uv run python src/school_planning/pipeline/run_pipeline.py
 Launch the decision-support Streamlit application locally:
 
 ```powershell
-uv run streamlit run app/streamlit_app.py
+uv run python -m streamlit run app/streamlit_app.py
 ```
 Open `http://localhost:8501` in your browser.
 
@@ -132,7 +132,7 @@ Open `http://localhost:8501` in your browser.
 Execute the automated test suite and static analysis:
 
 ```powershell
-# Run the complete test suite (248 tests)
+# Run the complete test suite (255 tests)
 uv run pytest -v
 
 # Run Ruff linter

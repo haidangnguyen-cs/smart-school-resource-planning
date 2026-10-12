@@ -60,7 +60,7 @@ Classification executes via a deterministic, hierarchical priority waterfall app
        v
 [Priority 2: Extreme Pressure (P90)]
   - Regular school in valid peer group
-  - student_teacher_ratio >= 90th percentile of (State x Level)
+  - student_teacher_ratio >= 90th percentile of national peer group (School Year x Level)
        | (False)
        v
 [Priority 3: Rapid Ratio Escalation]
@@ -121,11 +121,9 @@ Top 15 Jurisdictions by 2022–23 Enrollment:
 * **Macro Feasibility (Supported)**: State-level aggregation pools variance, stabilizing time-series signals.
 
 ### 5.2 Chronological Walk-Forward Backtest Results
-Walk-forward evaluation with expanding training windows evaluated one-step ahead performance:
-* Fold 1: Train 2018–19 -> Test 2019–20
-* Fold 2: Train 2018–19..2019–20 -> Test 2020–21
-* Fold 3: Train 2018–19..2020–21 -> Test 2021–22
-* Fold 4: Train 2018–19..2021–22 -> Test 2022–23
+Walk-forward evaluation with expanding training windows evaluated one-step ahead performance across two sequential validation folds:
+* Fold 1: Train [2018–19, 2019–20, 2020–21] -> Test 2021–22 (post-shock recovery validation step)
+* Fold 2: Train [2018–19, 2019–20, 2020–21, 2021–22] -> Test 2022–23 (final holdout validation step)
 
 | Fold | Target Variable | Forecasting Model | N | WAPE (%) | MAE | RMSE | Min Cov % | Med Cov % |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -148,7 +146,7 @@ Walk-forward evaluation with expanding training windows evaluated one-step ahead
 | overall_pooled | teacher_fte | 3-Year Moving Average | 106 | 1.71 | 997.30 | 1,604.7 | 59.32 | 99.62 |
 | overall_pooled | teacher_fte | Naive Persistence (y_t) | 106 | 1.16 | 677.38 | 1,074.3 | 59.32 | 99.62 |
 
-**Key Finding**: Naive persistence and simple linear drift achieved the lowest error across all evaluation folds (WAPE 1.1% to 1.5%), proving that simple transparent baselines are optimal for constrained annual educational series.
+**Key Finding**: Naive persistence (y_t) and simple linear drift achieved the lowest error across evaluation folds (e.g., 1.02% pooled WAPE across 110 state-year test observations for student enrollment under naive persistence), confirming that simple transparent baselines are optimal for constrained annual educational series. Note: WAPE is a weighted absolute percentage error (loss metric), not classification accuracy.
 
 ---
 
@@ -167,4 +165,5 @@ Walk-forward evaluation with expanding training windows evaluated one-step ahead
 | 37 | NORTH CAROLINA | 1,541,296.0 | 1,541,296.0 | 1,510,470.1 | 1,572,121.9 | 98,606.9 | 98,606.9 | — | 1 |
 | 26 | MICHIGAN | 1,386,979.0 | 1,386,979.0 | 1,359,239.4 | 1,414,718.6 | 82,063.3 | 82,063.3 | — | 1 |
 
+*Methodological Note: Ground truth for 2023–24 is absent from this NCES dataset (covering 2018–19 through 2022–23). These outputs represent unverified retrospective baseline projections and hypothetical policy scenario bands (±1%, ±2%), not accuracy-evaluated forecasts.*
 *Exclusions Note: Jurisdictions without valid 2022–23 reporting (e.g. American Samoa, Guam) are excluded from national aggregates to prevent distortion.*

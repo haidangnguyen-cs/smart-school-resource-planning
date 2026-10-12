@@ -42,7 +42,7 @@ To prevent premature administrative intervention based on unverified raw numbers
 
 ### Immediate Operational Triage Priorities:
 * **Priority 1 (Administrative Review — 5,169 schools, 5.15%)**: Requires data verification before any budgetary decisions. This tier flags boundary changes, reconfigurations, zero reported ratios, and missing teacher records.
-* **Priority 2 (Extreme Pressure — 8,562 schools, 8.53%)**: Operational regular schools whose student-to-teacher ratio meets or exceeds the **90th percentile (P90)** of their state and school-level peer group, representing targeted candidates for localized staffing intervention.
+* **Priority 2 (Extreme Pressure — 8,562 schools, 8.53%)**: Operational regular schools whose student-to-teacher ratio meets or exceeds the **90th percentile (P90)** of their national peer group by school level and school year, representing targeted candidates for localized staffing intervention.
 * **Priority 5 (Unassessed Growth — 2,698 schools, 2.69%)**: Schools lacking a consecutive longitudinal baseline (newly opened, reconfigured, or unmerged), explicitly separated from stable schools to eliminate false assurances.
 
 ---
