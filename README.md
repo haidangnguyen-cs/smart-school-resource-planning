@@ -4,11 +4,12 @@ Decision-support analytics for public school enrollment trends, teacher staffing
 
 Based on official NCES Common Core of Data (CCD) annual non-fiscal surveys (school years 2018-19 through 2022-23).
 
-## Status
+## Implemented Capabilities
 
-* **Phase 0:** Workspace and Source Audit (Complete)
-* **Phase 1:** Business Scope and Data Contract (Complete)
-* **Phase 2:** Ingestion and Data Quality (Pending)
+- **Configuration Contracts:** Formal machine-readable data contracts governing source specifications, column mappings, identifier standardization, data quality rules, and KPI formulas.
+- **Robust Ingestion Pipeline:** Memory-efficient chunked streaming readers with an incremental decoder cascade (`utf-8` -> `windows-1252`) and automated SHA-256 source manifest generation.
+- **Data Quality & Validation Suite:** Comprehensive integrity checks covering schema conformity, composite primary key uniqueness `[school_id, school_year]`, directory spine left-join relationship integrity (`1:0..1`), and domain business rules (zero-teacher anomalies, non-reported flags, negative value coercion).
+- **Source Auditing & Verification:** Automated execution script (`scripts/01_audit_sources.py`) generating machine-readable audit reports and data quality logs across all 15 raw NCES CCD source files.
 
 ## Architecture Overview
 

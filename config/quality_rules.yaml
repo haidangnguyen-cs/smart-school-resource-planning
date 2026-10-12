@@ -1,5 +1,5 @@
 # Smart School Resource Planning - Data Quality and Validation Rules
-# Phase 1 Data Contract
+# Quality Rules Data Contract
 
 identifier_rules:
   school_id:
@@ -126,4 +126,4 @@ scoping_rules:
       Operational status filter is applied as an analytical cohort flag rather than silently dropping
       records at ingestion. Ambiguous transition categories ('Added', 'Changed Boundary/Agency', 'Reopened')
       must not automatically be classified as inactive; they are preserved in an explicit review bucket
-      for Phase 2/3 empirical evaluation against reported enrollment and staffing.
+      for empirical evaluation during ingestion and panel reconciliation against reported enrollment and staffing.

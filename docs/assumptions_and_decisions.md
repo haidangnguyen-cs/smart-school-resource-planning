@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This document records the foundational architectural decisions, analytical assumptions, and empirical findings established during Phase 0 and Phase 1 of the **Smart School Resource Planning** project. Each decision records the business and technical context, alternatives considered, chosen approach, and documented rationale.
+This document records the foundational architectural decisions, analytical assumptions, and empirical findings established during the initial source audit and data contract specification of the **Smart School Resource Planning** project. Each decision records the business and technical context, alternatives considered, chosen approach, and documented rationale.
 
 ---
 
@@ -20,7 +20,7 @@ This document records the foundational architectural decisions, analytical assum
   - Both indicators contain exactly 99,533 unique schools (`NCESSCH`), proving exact set equality across reporting institutions in 2018-19.
   - Of the 99,533 schools, exactly 99,287 schools (99.75%) exhibit identical student counts between the two indicators.
   - Exactly 246 schools (0.25%) exhibit differences, where `Education Unit Total` includes Adult Education enrollment (ranging from 1 to 5,082 adult students).
-  - *Caveat:* Full Membership indicator cohort set equality was verified for 2018-19 only; indicator domains and cohort equivalence across the remaining four school years (2019-20 through 2022-23) remain unverified pending Phase 2 chunked ingestion.
+  - *Caveat:* Full Membership indicator cohort set equality was verified for 2018-19 only; indicator domains and cohort equivalence across the remaining four school years (2019-20 through 2022-23) are verified via chunked streaming data ingestion.
 * **Decision:**
   - Establish `Derived - Education Unit Total minus Adult Education Count` as the exclusive primary operational contract indicator for `total_students` in the primary analytical panel.
   - The primary panel filters strictly to this single indicator to guarantee a strict 1:1 school-year grain.
@@ -50,7 +50,7 @@ This document records the foundational architectural decisions, analytical assum
 ### ADR-03: Treatment of Zero Teacher FTE vs. Non-Reported Missing Data (`DMS_FLAG`)
 
 * **Date:** 2026-10-12
-* **Context:** In Component `059` (Staff), teacher FTE (`TEACHERS`) is qualified by a data flag (`DMS_FLAG`). In the verified Phase 0 audit of the 2018-19 Staff file (`ccd_sch_059_1819_l_1a_091019.csv`, 99,911 total rows):
+* **Context:** In Component `059` (Staff), teacher FTE (`TEACHERS`) is qualified by a data flag (`DMS_FLAG`). In the verified source audit of the 2018-19 Staff file (`ccd_sch_059_1819_l_1a_091019.csv`, 99,911 total rows):
   - 96,780 schools (96.87%) have `DMS_FLAG == 'Reported'`:
     - 95,353 schools (95.44%) report positive FTE (`TEACHERS > 0.0`).
     - 1,427 schools (1.43%) report zero FTE (`TEACHERS == 0.0`).
@@ -160,7 +160,7 @@ This document records the foundational architectural decisions, analytical assum
 * **Decision:**
   1. Restrict P90 peer-group ratio benchmarking strictly to `SCH_TYPE_TEXT == 'Regular School'` across the exact set of standard instructional levels (`Elementary`, `Middle`, `High`).
   2. Enforce a complete catch-all eligibility rule: any school level outside the exact set `{'Elementary', 'Middle', 'High'}` (including `Secondary`, `Adult Education`, `Not applicable`, or any newly observed string in raw data) and any non-regular school type is classified as `Unbenchmarked / Specialized Peer Group`.
-  3. Remove unverified fixed sample-size assumptions (e.g. >15,000 schools); Phase 4 exploratory data analysis is assigned responsibility for profiling actual peer-group stratum sizes and assessing benchmarking suitability.
+  3. Remove unverified fixed sample-size assumptions (e.g. >15,000 schools); exploratory analysis and peer-group evaluation is assigned responsibility for profiling actual peer-group stratum sizes and assessing benchmarking suitability.
   4. Formally distinguish the orthogonal dimension `peer_group_status` (`Benchmarked Regular Peer Group` vs. `Unbenchmarked / Specialized Peer Group`) from `resource_pressure_tier`.
   5. For unbenchmarked schools evaluated into Priority 6 (`Stable / Balanced`), explicitly document that this classification denotes solely that available longitudinal trend indicators did not cross provisional escalation thresholds (`tau_ratio_rise`, `tau_growth_gap`). It does NOT imply or certify that absolute staffing levels have been shown to be adequate, balanced, or compliant with specialized program guidelines.
   6. The platform strictly refuses to invent arbitrary statutory ratio thresholds in the absence of authoritative standards.

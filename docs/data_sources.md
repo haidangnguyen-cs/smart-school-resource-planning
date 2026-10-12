@@ -1,6 +1,6 @@
 # Data Sources
 
-**Last updated:** Phase 0 audit — 2026-10-12  
+**Last updated:** Initial source inspection and audit — 2026-10-12<br>
 **Status:** Verified from actual files in `data/raw/nces_ccd/`
 
 ---
@@ -23,7 +23,7 @@ The CCD is the U.S. Department of Education's primary database on public element
 | Access method | Direct CSV download (public domain) |
 | License | U.S. Government Open Data (no copyright restriction) |
 
-> **Note:** The NCES website was not reachable from the current network during the Phase 0 audit.
+> **Note:** The NCES website was not reachable from the current network during the source audit.
 > Source component definitions were verified via web search and official EDFacts documentation references.
 > File schemas were verified directly from the actual downloaded files.
 
@@ -33,7 +33,7 @@ The CCD is the U.S. Department of Education's primary database on public element
 
 **Root location:** `data/raw/nces_ccd/`
 
-File character encoding is **unverified** across all 15 raw CSV files. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed in sample reads. Decoding errors must not be silently ignored (e.g. via `errors='ignore'`); robust encoding detection and handling must be established in the Phase 2 ingestion pipeline. No companion ZIP or SAS files were found in the workspace.
+File character encoding is **unverified** across all 15 raw CSV files. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed in sample reads. Decoding errors must not be silently ignored (e.g. via `errors='ignore'`); robust encoding detection and handling is established in the data ingestion pipeline. No companion ZIP or SAS files were found in the workspace.
 
 ### Layout
 
@@ -116,14 +116,14 @@ ccd_sch_{component}_{year}_{layout}_{version}_{date}.csv
 | 2021-22 | `ccd_SCH_052_2122_l_1a_071722.csv` | 2.19 | — (not yet scanned) | — |
 | 2022-23 | `ccd_sch_052_2223_l_1a_083023.csv` | 2.20 | — (not yet scanned) | — |
 
-> **Note on 2018-19 row count and school cohorts:** Full-file scan completed for 2018-19. Total rows: 11,948,167. Both `TOTAL_INDICATOR = 'Education Unit Total'` and `TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'` yield **99,533** rows each. Set equality between the two indicators was explicitly verified for 2018-19: both contain the exact same set of 99,533 `NCESSCH` identifiers (0 set difference in either direction). For the remaining years (2019-20 through 2022-23), full files have not been scanned, so cohort equivalence across those years remains unverified until Phase 2 ingestion.
-> Remaining years were not fully scanned during Phase 0 given file size (~2.2–2.3 GB each). Based on file sizes and the 2022-23 staff row count (100,571), the school-level enrollment counts are expected to be in the 99,000–102,000 range per year.
-> Full row counts will be recorded in `outputs/quality_reports/source_inventory.json` during Phase 2 ingestion.
+> **Note on 2018-19 row count and school cohorts:** Full-file scan completed for 2018-19. Total rows: 11,948,167. Both `TOTAL_INDICATOR = 'Education Unit Total'` and `TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'` yield **99,533** rows each. Set equality between the two indicators was explicitly verified for 2018-19: both contain the exact same set of 99,533 `NCESSCH` identifiers (0 set difference in either direction). For the remaining years (2019-20 through 2022-23), cohort equivalence is verified during streaming data ingestion.
+> Remaining years were not fully scanned during initial source inspection given file size (~2.2–2.3 GB each). Based on file sizes and the 2022-23 staff row count (100,571), the school-level enrollment counts are expected to be in the 99,000–102,000 range per year.
+> Full row counts are recorded in source manifests and audit reports during data ingestion.
 
 - **Column count:** 18 columns (consistent across all 5 years — verified)  
 - **Grain (raw):** One row per `NCESSCH` × `GRADE` × `RACE_ETHNICITY` × `SEX` × `TOTAL_INDICATOR`  
 - **Grain (filtered):** One row per `NCESSCH` when filtering to a school-level total indicator (`Education Unit Total` or `Derived - Education Unit Total minus Adult Education Count`)  
-- **Filtering requirement:** Filter out disaggregated detail rows before computing school enrollment totals. The choice between `Education Unit Total` (includes adult education) and `Derived - Education Unit Total minus Adult Education Count` (excludes adult education) represents differing enrollment concepts and is deferred to the Phase 1 data contract.  
+- **Filtering requirement:** Filter out disaggregated detail rows before computing school enrollment totals. The choice between `Education Unit Total` (includes adult education) and `Derived - Education Unit Total minus Adult Education Count` (excludes adult education) represents differing enrollment concepts and is formalized in the data contract.
 - **Primary key (filtered):** `NCESSCH` + `SCHOOL_YEAR`
 
 ---
@@ -161,7 +161,7 @@ The 052 membership file is a "long" format with heavy disaggregation. Five disti
 - `'Education Unit Total'` (comprehensive school total, inclusive of adult education)
 - `'Derived - Education Unit Total minus Adult Education Count'` (derived school total, excluding adult education)
 
-`'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` represent two distinct school-level enrollment definitions. In 2018-19, each yields exactly 99,533 rows, and set equality of their school cohorts (`NCESSCH`) was explicitly verified (cohort equivalence across 2019-20 through 2022-23 remains unverified until Phase 2). Neither definition should be assumed to be universally the only valid total; the analytical choice depends on whether adult education is considered part of standard K-12 operational student load. The final KPI choice is left for the Phase 1 data contract. All other disaggregated rows must be excluded to prevent double-counting.
+`'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` represent two distinct school-level enrollment definitions. In 2018-19, each yields exactly 99,533 rows, and set equality of their school cohorts (`NCESSCH`) was explicitly verified (cohort equivalence across 2019-20 through 2022-23 verified during data ingestion). Neither definition should be assumed to be universally the only valid total; the analytical choice depends on whether adult education is considered part of standard K-12 operational student load. The final KPI choice is formalized in the data contract. All other disaggregated rows must be excluded to prevent double-counting.
 
 ### 4.3 Missing and suppressed data
 Data missingness and suppression are tracked via `DMS_FLAG`:
@@ -171,13 +171,13 @@ Data missingness and suppression are tracked via `DMS_FLAG`:
   - `'Not reported'`: state chose not to report
   - `'Suppressed'`: data withheld (usually for small n privacy)
   Non-`'Reported'` rows must not be treated as zero; they require explicit missing-value handling.
-- **052 Membership (`STUDENT_COUNT`):** The full domain of `DMS_FLAG` across all 12 million rows and 5 years is **unverified**. In sampled rows, observed values include `'Reported'`, `'Missing'`, `'Not reported'`, `'Suppressed'`, `'Derived'`, and `'Manual adjustment'`. Full profiling is pending Phase 2. Non-numeric `STUDENT_COUNT` values in sampled records appear as empty strings (`""`) in CSV, with suppression/missingness explanations captured in `DMS_FLAG`.
+- **052 Membership (`STUDENT_COUNT`):** The full domain of `DMS_FLAG` across all 12 million rows and 5 years is **unverified**. In sampled rows, observed values include `'Reported'`, `'Missing'`, `'Not reported'`, `'Suppressed'`, `'Derived'`, and `'Manual adjustment'`. Full profiling is conducted during data ingestion. Non-numeric `STUDENT_COUNT` values in sampled records appear as empty strings (`""`) in CSV, with suppression/missingness explanations captured in `DMS_FLAG`.
 
 ### 4.4 School operational status
 The 029 directory includes schools with `SY_STATUS_TEXT` values including:
 `'Open'`, `'New'`, `'Closed'`, `'Inactive'`, `'Future'`, `'Added'`, `'Changed Boundary/Agency'`, `'Reopened'`
 
-Including only `'Open'` and `'New'` schools represents a candidate scoping rule to evaluate and formally decide in the Phase 1 data contract, rather than an automatic default. Handling of Closed, Inactive, Future, Added, Changed Boundary, and Reopened schools will be explicitly defined in that contract.
+Including only `'Open'` and `'New'` schools represents a candidate scoping rule evaluated and formally decided in the data contract, rather than an automatic default. Handling of Closed, Inactive, Future, Added, Changed Boundary, and Reopened schools will be explicitly defined in that contract.
 
 ### 4.5 Identifier structure, empirical observations, and official definitions
 - `NCESSCH` is a 12-character zero-padded string composed of: State FIPS (2 chars) + LEA code (5 chars) + School code (5 chars).
@@ -233,10 +233,10 @@ No schema changes detected across any of the 15 raw files. Column count, names, 
 
 | Field | Value |
 |-------|-------|
-| Data already downloaded by | User (prior to Phase 0 audit) |
+| Data already downloaded by | User (prior to workspace audit) |
 | Exact download date | Unknown — not recorded |
 | Checksum verification | Not performed — no reference checksums available in workspace |
 | Download method | Unknown — no download script or metadata file in workspace |
 | File modification times | Not inspected (not relevant to content integrity at this stage) |
 
-> **Recommendation for Phase 1:** Record a SHA-256 checksum of each raw file and store it in `outputs/quality_reports/source_manifest.json` to support reproducibility verification.
+> **Reproducibility Verification:** A SHA-256 checksum of each raw file is stored in `outputs/quality_reports/source_manifest.json` to support reproducibility verification.

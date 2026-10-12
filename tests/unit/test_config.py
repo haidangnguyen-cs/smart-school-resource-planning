@@ -1,4 +1,4 @@
-"""Unit tests for Phase 1 configuration schemas, data contracts, and tier logic."""
+"""Unit tests for configuration schemas, data contracts, and tier logic."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import pytest
 
 
 class TestConfigurationFilesExist:
-    """Ensure all required Phase 1 configuration files exist on disk."""
+    """Ensure all required configuration files exist on disk."""
 
     @pytest.mark.parametrize(
         "filename",
@@ -32,7 +32,6 @@ class TestProjectConfigContract:
         proj = project_config.get("project", {})
         assert proj.get("name") == "smart-school-resource-planning"
         assert proj.get("version") == "0.1.0"
-        assert "phase" in proj
 
     def test_time_scope_contract(self, project_config: dict):
         time_scope = project_config.get("time_scope", {})
@@ -272,7 +271,7 @@ class TestKpiDefinitionsContract:
         # Issue 5: Unsupported numerical claim (>15,000 schools) must be removed
         assert "15,000" not in str(bench)
         assert "> 15,000" not in str(bench)
-        assert "Phase 4 exploratory data analysis is responsible for reporting actual peer-group stratum sizes" in eligible.get("rationale", "")
+        assert "Exploratory analysis and peer-group evaluation is responsible for reporting actual peer-group stratum sizes" in eligible.get("rationale", "")
 
         # Issue 4: Complete unbenchmarked-level handling including Secondary, Not applicable, Adult Education, and catch-all
         unbenchmarked = bench.get("unbenchmarked_peer_groups", {})

@@ -65,25 +65,25 @@ Educational leaders face complex challenges in optimizing classroom resources:
 
 ```mermaid
 graph TD
-    P0[Phase 0: Workspace & Source Audit] --> P1[Phase 1: Business Scope & Data Contract]
-    P1 --> P2[Phase 2: Ingestion & Data Quality Engine]
-    P2 --> P3[Phase 3: Cleaning & Panel Construction]
-    P3 --> P4[Phase 4: Exploratory Analysis & Core KPIs]
-    P4 --> P5[Phase 5: Resource Pressure Analysis]
-    P5 --> P6[Phase 6: Constrained Forecasting & Scenarios]
-    P6 --> P7[Phase 7: Interactive Dashboard]
-    P7 --> P8[Phase 8: Reporting & Deliverables]
+    M1[Workspace & Source Audit] --> M2[Business Scope & Data Contract]
+    M2 --> M3[Ingestion & Data Quality Engine]
+    M3 --> M4[Cleaning & Panel Construction]
+    M4 --> M5[Exploratory Analysis & Core KPIs]
+    M5 --> M6[Resource Pressure Analysis]
+    M6 --> M7[Constrained Forecasting & Scenarios]
+    M7 --> M8[Interactive Dashboard]
+    M8 --> M9[Reporting & Deliverables]
 ```
 
-* **Phase 0 (Completed):** Source audit, verification of 15 raw CSV files, directory layout documentation.
-* **Phase 1 (Current):** Business requirements, data contracts, configuration schemas, forecasting feasibility boundary.
-* **Phase 2:** Robust file readers, schema normalizer, key check engine, comprehensive data quality profiling.
-* **Phase 3:** Deterministic ID cleaning, indicator filtering, multi-source joins, validated Parquet analytical panel.
-* **Phase 4:** Distribution profiling, descriptive summaries, KPI compute engine.
-* **Phase 5:** Resource pressure categorization rules, growth gap indexing, anomaly identification.
-* **Phase 6:** State-level walk-forward benchmark models, error quantification (MAE/WAPE), scenario planning.
-* **Phase 7:** Streamlit interactive application.
-* **Phase 8:** Technical report, executive brief, runbook, and reproducible pipeline orchestration.
+* **Workspace & Source Audit:** Source audit, verification of 15 raw CSV files, directory layout documentation.
+* **Business Scope & Data Contract:** Business requirements, data contracts, configuration schemas, forecasting feasibility boundary.
+* **Ingestion & Data Quality Engine:** Robust file readers, schema normalizer, key check engine, comprehensive data quality profiling.
+* **Cleaning & Panel Construction:** Deterministic ID cleaning, indicator filtering, multi-source joins, validated Parquet analytical panel.
+* **Exploratory Analysis & Core KPIs:** Distribution profiling, descriptive summaries, KPI compute engine.
+* **Resource Pressure Analysis:** Resource pressure categorization rules, growth gap indexing, anomaly identification.
+* **Constrained Forecasting & Scenarios:** State-level walk-forward benchmark models, error quantification (MAE/WAPE), scenario planning.
+* **Interactive Dashboard:** Streamlit interactive application.
+* **Reporting & Deliverables:** Technical report, executive brief, runbook, and reproducible pipeline orchestration.
 
 ---
 

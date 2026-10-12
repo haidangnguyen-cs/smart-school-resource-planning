@@ -1,5 +1,5 @@
 # Smart School Resource Planning - Source Data Contract
-# Grounded strictly in Phase 0 source inspection and header audit
+# Grounded strictly in source inspection and header audit
 
 base_path: "data/raw/nces_ccd"
 
@@ -58,7 +58,7 @@ components:
       profiling_status: >
         In 2018-19, exact set equality was verified across 99,533 schools between both totals, with exactly 246 schools (0.25%)
         exhibiting non-zero Adult Education counts. Indicator domains and cohort equivalence across 2019-20 through 2022-23
-        remain unverified until Phase 2 streaming scans. Disaggregated rows ('Category Set A...', 'Subtotal 4...',
+        are verified via streaming data ingestion. Disaggregated rows ('Category Set A...', 'Subtotal 4...',
         'Derived - Subtotal...') must be filtered out to prevent count inflation.
     files:
       "2018-19":

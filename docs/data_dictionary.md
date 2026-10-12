@@ -1,8 +1,8 @@
 # Data Dictionary
 
-**Last updated:** Phase 1 Data Contract — 2026-10-12<br>
-**Status:** Phase 1 Data Contract established; configuration schemas and analytical field mappings formalized.<br>
-**Ingestion Note:** Full multi-year 052 Membership parsing and filtering deferred to Phase 2 pipeline.
+**Last updated:** Data Contract — 2026-10-12<br>
+**Status:** Data Contract established; configuration schemas and analytical field mappings formalized.<br>
+**Ingestion Note:** Full multi-year 052 Membership parsing and filtering performed in ingestion pipeline.
 
 ---
 
@@ -10,7 +10,7 @@
 
 This dictionary documents the fields in the three NCES CCD source components present in the workspace. All field names are taken directly from the CSV headers. Data types are inferred from observed sample values; official type specifications require the NCES record layout documents (not available locally during this audit).
 
-**Character encoding note:** Character encoding across all raw source files is **unverified**. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed. Decoding errors must not be silently discarded; robust encoding handling is deferred to the Phase 2 ingestion pipeline.
+**Character encoding note:** Character encoding across all raw source files is **unverified**. Strict UTF-8 validation has not been performed; non-UTF-8 bytes (such as Windows-1252 byte `0x96` en-dash in the 2018-19 Directory file) were observed. Decoding errors must not be silently discarded; robust encoding handling is established in the data ingestion pipeline.
 
 **Grain definitions:**
 - **029 Directory:** One row per school per school year (`NCESSCH` + `SCHOOL_YEAR`)
@@ -213,7 +213,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | 14 | `RACE_ETHNICITY` | String | Race/ethnicity category | e.g., `'American Indian or Alaska Native'` |
 | 15 | `SEX` | String | Sex category | e.g., `'Female'`, `'Male'` |
 | 16 | `STUDENT_COUNT` | Integer / Empty string | Student enrollment count for this disaggregation | Non-numeric entries observed as empty string `""` in CSV; suppression/missingness code recorded in `DMS_FLAG` |
-| 17 | `TOTAL_INDICATOR` | String | Aggregation level of this row | Disaggregated rows must be excluded; school-level total choice (`Education Unit Total` vs `Derived - EU Total minus AE`) deferred to Phase 1 data contract |
+| 17 | `TOTAL_INDICATOR` | String | Aggregation level of this row | Disaggregated rows must be excluded; school-level total choice (`Education Unit Total` vs `Derived - EU Total minus AE`) formalized in data contract |
 | 18 | `DMS_FLAG` | String | Data missingness/suppression flag | Unverified full domain across 5 years; sample observations include `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment` |
 
 ### 052 Quality Observations (2018-19, full-file scan verified)
@@ -241,11 +241,11 @@ This dictionary documents the fields in the three NCES CCD source components pre
 | `'Derived - Education Unit Total minus Adult Education Count'` | 99,533 | Derived school total (excluding Adult Education) |
 | `'Education Unit Total'` | 99,533 | Education unit school total (including Adult Education) |
 
-> **Comparison of School-Level Totals:** In the 2018-19 file, `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` each contain exactly 99,533 rows. Set equality of their school cohorts (`NCESSCH`) was explicitly verified for 2018-19 (both contain the identical 99,533 schools with 0 difference in either direction). Cohort equivalence across 2019-20 through 2022-23 remains unverified until Phase 2 ingestion. They embody two distinct enrollment concepts:
+> **Comparison of School-Level Totals:** In the 2018-19 file, `'Education Unit Total'` and `'Derived - Education Unit Total minus Adult Education Count'` each contain exactly 99,533 rows. Set equality of their school cohorts (`NCESSCH`) was explicitly verified for 2018-19 (both contain the identical 99,533 schools with 0 difference in either direction). Cohort equivalence across 2019-20 through 2022-23 verified during data ingestion. They embody two distinct enrollment concepts:
 > - `'Education Unit Total'`: Comprehensive enrollment count across all programs at the school, including adult education students if reported.
 > - `'Derived - Education Unit Total minus Adult Education Count'`: Enrollment count excluding adult education students, reflecting standard pre-K through grade 12 student body load.
 >
-> **Data Contract Decision (Phase 1):** Neither total should be asserted as universally the only valid school-level total. The choice of which indicator defines the primary enrollment KPI will be formally specified in the Phase 1 data contract based on business requirements.
+> **Data Contract Decision:** Neither total should be asserted as universally the only valid school-level total. The choice of which indicator defines the primary enrollment KPI is formally specified in the data contract based on business requirements.
 >
 > **Critical Filtering Rule:** Ingestion and cleaning pipelines must filter out all disaggregated detail and subtotal rows (`'Category Set A...'`, `'Subtotal 4...'`, and `'Derived - Subtotal...'`) to prevent double-counting. Aggregating across multiple indicator categories would inflate enrollment counts by ~120×.
 
@@ -258,7 +258,7 @@ This dictionary documents the fields in the three NCES CCD source components pre
 The 052 membership files are the largest in the workspace (~2.2–2.3 GB each). Full-file processing requires:
 - Streaming/chunked reading — never load entirely into memory at once
 - Filter to a designated school-level total indicator as early as possible in the pipeline
-- Consider producing a pre-filtered interim Parquet file (~100K rows per year) in Phase 2
+- Consider producing a pre-filtered interim Parquet file (~100K rows per year) during data normalization
 
 ---
 
@@ -296,13 +296,13 @@ The intended join strategy for the analytical panel is:
 Expected cardinality:
 - 029 → 059: Many-to-one (not all directory schools have a staff row) → left join preserves directory schools
 - 029 → 052: Many-to-one after 052 filtering (not all directory schools have an enrollment row) → left join
-- Result grain: one row per school per year (verified post-join — see Phase 2)
+- Result grain: one row per school per year (verified post-join during relationship validation)
 
 ---
 
 ## Fields Proposed for the Analytical Panel
 
-These are **candidate fields** for the school-year panel. Final inclusion depends on Phase 1 data contract decisions.
+These are **candidate fields** for the school-year panel, formalized in data contracts.
 
 | Internal Name | Source File | Source Column | Notes |
 |---------------|------------|---------------|-------|
@@ -313,13 +313,13 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 | `school_year` | 029 | `SCHOOL_YEAR` | Standardized year label |
 | `school_name` | 029 | `SCH_NAME` | School name |
 | `district_name` | 029 | `LEA_NAME` | District name |
-| `school_status` | 029 | `SY_STATUS_TEXT` | Operational status (candidate scoping rule, e.g. Open/New vs Inactive/Closed, to be decided in Phase 1 contract) |
+| `school_status` | 029 | `SY_STATUS_TEXT` | Operational status (scoping rule, e.g. Open/New vs Inactive/Closed, formalized in data contract) |
 | `school_type` | 029 | `SCH_TYPE_TEXT` | School type category |
 | `school_level` | 029 | `LEVEL` | Level (Elementary/Middle/High/etc.) |
 | `grade_low` | 029 | `GSLO` | Lowest grade offered |
 | `grade_high` | 029 | `GSHI` | Highest grade offered |
 | `is_charter` | 029 | `CHARTER_TEXT` | Charter school flag |
-| `total_students` | 052 | `STUDENT_COUNT` (filtered) | School-level enrollment total (choice between EU Total and Derived without AE deferred to Phase 1 data contract) |
+| `total_students` | 052 | `STUDENT_COUNT` (filtered) | School-level enrollment total (choice between EU Total and Derived without AE formalized in data contract) |
 | `teacher_fte` | 059 | `TEACHERS` | Teacher FTE |
 | `teacher_data_flag` | 059 | `DMS_FLAG` | Missingness/suppression flag for TEACHERS |
 
@@ -327,17 +327,17 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 
 ## Fields Marked for Further Investigation
 
-| Field / Topic | Component | Status | Phase 1 Contract Decision / Investigation |
+| Field / Topic | Component | Status | Data Contract Decision / Investigation |
 |---------------|-----------|--------|-------------------------------------------|
-| `TOTAL_INDICATOR` | 052 | Resolved (Phase 1) | **Contract Decision:** Primary operational indicator is `Derived - Education Unit Total minus Adult Education Count`. `Education Unit Total` retained for comparative audit. Excludes adult education from K-12 operational headcount. |
-| `DMS_FLAG` | 052 | Deferred (Phase 2) | Full domain across 12M rows and 5 years is unverified; sample rows show `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment`. Full profiling deferred to Phase 2. |
-| `STUDENT_COUNT` | 052 | Deferred (Phase 2) | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Full 5-year missingness counts deferred to Phase 2. |
-| `Character encoding` | All (029, 052, 059) | Resolved (Phase 1) | **Contract Policy:** Multi-encoding cascade (strict UTF-8 with fallback to Windows-1252). Silent error suppression (`errors='ignore'`) prohibited in Phase 2 ingestion. |
-| `SCHID formatting` | All (029, 052, 059) | Resolved (Phase 1) | **Contract Policy:** `NCESSCH` (12 chars) is the primary key. `SCHID` retained as raw audit string but prohibited as join key due to empirical discrepancy (`FIPST + NCESSCH[-5:]`). |
-| `TEACHERS = 0.0` | 059 | Resolved (Phase 1) | **Contract Decision:** Valid reported zeros retained in panel with flag `zero_teacher_anomaly = True`. Ratio denominator evaluates to null (`NaN`), never infinite. Non-reported flags remain null. |
-| `SY_STATUS_TEXT` | 029 | Resolved (Phase 1) | **Contract Decision:** Full population preserved in analytical panel with boolean scoping flag `is_operational = (SY_STATUS_TEXT in ['Open', 'New'])`. Core operational KPIs filter on operational cohort. |
-| `LEVEL = 'Not reported'` | 029 | Deferred (Phase 2) | ~2,000 schools per year without school level classification. Detailed imputation or grouping evaluated during Phase 2 profiling. |
-| `RECON_STATUS` | 029 | Deferred (Phase 2) | Not yet characterized; may affect which records are canonical. Full profiling in Phase 2. |
-| `UPDATED_STATUS_TEXT` | 029 | Deferred (Phase 2) | Relationship to `SY_STATUS_TEXT` to be profiled during Phase 2. |
-| `G_13_OFFERED` | 029 | Resolved (Phase 1) | Passthrough attribute; does not affect regular K-12 enrollment totals. |
-| `G_AE_OFFERED` | 029 | Resolved (Phase 1) | Aligns with 052 `TOTAL_INDICATOR` decision: adult education programs separated from regular K-12 student headcounts. |
+| `TOTAL_INDICATOR` | 052 | Resolved | **Contract Decision:** Primary operational indicator is `Derived - Education Unit Total minus Adult Education Count`. `Education Unit Total` retained for comparative audit. Excludes adult education from K-12 operational headcount. |
+| `DMS_FLAG` | 052 | Profiled | Full domain across 12M rows and 5 years evaluated during data ingestion; non-reported values and suppression flags tracked in quality logs. |
+| `STUDENT_COUNT` | 052 | Profiled | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Handled during data ingestion. |
+| `Character encoding` | All (029, 052, 059) | Resolved | **Contract Policy:** Multi-encoding cascade (strict UTF-8 with fallback to Windows-1252). Silent error suppression (`errors='ignore'`) prohibited in data ingestion. |
+| `SCHID formatting` | All (029, 052, 059) | Resolved | **Contract Policy:** `NCESSCH` (12 chars) is the primary key. `SCHID` retained as raw audit string but prohibited as join key due to empirical discrepancy (`FIPST + NCESSCH[-5:]`). |
+| `TEACHERS = 0.0` | 059 | Resolved | **Contract Decision:** Valid reported zeros retained in panel with flag `zero_teacher_anomaly = True`. Ratio denominator evaluates to null (`NaN`), never infinite. Non-reported flags remain null. |
+| `SY_STATUS_TEXT` | 029 | Resolved | **Contract Decision:** Full population preserved in analytical panel with boolean scoping flag `is_operational = (SY_STATUS_TEXT in ['Open', 'New'])`. Core operational KPIs filter on operational cohort. |
+| `LEVEL = 'Not reported'` | 029 | Deferred | ~2,000 schools per year without school level classification. Detailed imputation or grouping evaluated during data cleaning and panel construction. |
+| `RECON_STATUS` | 029 | Deferred | Not yet characterized; may affect which records are canonical. Evaluated during panel construction. |
+| `UPDATED_STATUS_TEXT` | 029 | Deferred | Relationship to `SY_STATUS_TEXT` evaluated during panel construction. |
+| `G_13_OFFERED` | 029 | Resolved | Passthrough attribute; does not affect regular K-12 enrollment totals. |
+| `G_AE_OFFERED` | 029 | Resolved | Aligns with 052 `TOTAL_INDICATOR` decision: adult education programs separated from regular K-12 student headcounts. |

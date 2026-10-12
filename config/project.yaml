@@ -1,12 +1,11 @@
 # Smart School Resource Planning - Project Configuration
-# Phase 1: Business Scope and Data Contract
+# Business Scope and Data Contract
 
 project:
   name: "smart-school-resource-planning"
   version: "0.1.0"
   description: "Decision-support analytics for public school enrollment and teacher staffing resource allocation"
   domain: "Education Data Analytics, Resource Planning, Forecasting"
-  phase: "Phase 1 - Business Scope and Data Contract"
 
 time_scope:
   start_year: "2018-19"
@@ -60,4 +59,4 @@ scoping_policy:
     Evaluate active-only cohort ('Open', 'New') for core operational KPIs while preserving the
     full population in quality audit logs. Ambiguous categories ('Added', 'Changed Boundary/Agency',
     'Reopened') are placed in an explicit review bucket and evaluated against reported enrollment/staffing
-    data in Phase 2/3 rather than automatically presumed inactive.
+    data during ingestion and panel reconciliation rather than automatically presumed inactive.

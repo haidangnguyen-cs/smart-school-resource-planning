@@ -1,5 +1,5 @@
 # Smart School Resource Planning - KPI Definitions and Formulas
-# Phase 1 Data Contract
+# Data Contract: KPI Definitions and Operational Specifications
 
 kpis:
   total_students:
@@ -148,7 +148,7 @@ kpis:
       stratification: ["school_year", "school_level"]
       rationale: >
         P90 ratio comparisons are statistically meaningful only within homogeneous regular instructional levels.
-        Phase 4 exploratory data analysis is responsible for reporting actual peer-group stratum sizes and assessing
+        Exploratory analysis and peer-group evaluation is responsible for reporting actual peer-group stratum sizes and assessing
         whether group sizes support robust decile estimation.
     unbenchmarked_peer_groups:
       eligibility_rule: >
@@ -235,7 +235,7 @@ kpis:
         condition: "Complete data AND NOT Priority 2 AND has_valid_growth_metrics AND ratio_growth_yoy_pct >= tau_ratio_rise"
         unresolved_threshold: >
           tau_ratio_rise is an explicitly provisional candidate threshold (e.g. +15.0% YoY ratio increase)
-          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration in Phase 5.
+          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration before operational use.
         provisional_threshold: true
         description: "Identifies schools where staffing ratio escalated rapidly compared to the previous school year."
       priority_4_staffing_growth_deficit:
@@ -243,7 +243,7 @@ kpis:
         condition: "Complete data AND NOT Priority 2 AND NOT rapidly_rising AND has_valid_growth_metrics AND growth_gap_pct_points >= tau_growth_gap"
         unresolved_threshold: >
           tau_growth_gap is an explicitly provisional candidate threshold (e.g. +5.0 percentage points)
-          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration in Phase 5.
+          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration before operational use.
         provisional_threshold: true
         description: "Identifies schools where student enrollment grew significantly faster than teacher FTE staffing."
       priority_5_growth_unassessed:

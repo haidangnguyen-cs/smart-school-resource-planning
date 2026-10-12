@@ -1,0 +1,6 @@
+NCESSCH,LEAID,FIPST,ST,STATENAME,SCH_NAME,LEA_NAME,SCHOOL_YEAR,SY_STATUS_TEXT,SY_STATUS,SCH_TYPE_TEXT,SCH_TYPE,LEVEL,GSLO,GSHI,CHARTER_TEXT
+010000500871,0100005,01,AL,Alabama,Albertville High School,Albertville City,2018-2019,Open,1,Regular school,1,High,09,12,No
+010000500879,0100005,01,AL,Alabama,Albertville Middle School,Albertville City,2018-2019,Open,1,Regular school,1,Middle,07,08,No
+010000500889,0100005,01,AL,Alabama,Albertville Elementary,Albertville City,2018-2019,Open,1,Regular school,1,Elementary,03,04,No
+010000600001,0100006,01,AL,Alabama,Closed School Sample,Marshall County,2018-2019,Closed,2,Regular school,1,Elementary,KG,05,No
+010000600002,0100006,01,AL,Alabama,New School Sample,Marshall County,2018-2019,New,3,Regular school,1,Elementary,KG,05,No
