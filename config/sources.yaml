@@ -1,0 +1,133 @@
+# Smart School Resource Planning - Source Data Contract
+# Grounded strictly in Phase 0 source inspection and header audit
+
+base_path: "data/raw/nces_ccd"
+
+components:
+  directory:
+    code: "029"
+    name: "School Directory"
+    edfacts_survey: "C029 - School Universe Survey"
+    format: "csv"
+    layout: "wide"
+    verified_column_count: 65
+    primary_key: "NCESSCH"
+    natural_keys:
+      school_id: "NCESSCH"
+      district_id: "LEAID"
+      state_fips: "FIPST"
+      state_abbr: "ST"
+    files:
+      "2018-19":
+        filename: "ccd_sch_029_1819_w_1a_091019.csv"
+        path: "data/raw/nces_ccd/2018-19/ccd_sch_029_1819_w_1a_091019.csv"
+        rows: 102176
+      "2019-20":
+        filename: "ccd_sch_029_1920_w_1a_082120.csv"
+        path: "data/raw/nces_ccd/2019-20/ccd_sch_029_1920_w_1a_082120.csv"
+        rows: 101688
+      "2020-21":
+        filename: "ccd_sch_029_2021_w_1a_080621.csv"
+        path: "data/raw/nces_ccd/2020-21/ccd_sch_029_2021_w_1a_080621.csv"
+        rows: 101662
+      "2021-22":
+        filename: "ccd_sch_029_2122_w_1a_071722.csv"
+        path: "data/raw/nces_ccd/2021-22/ccd_sch_029_2122_w_1a_071722.csv"
+        rows: 102130
+      "2022-23":
+        filename: "ccd_sch_029_2223_w_1a_083023.csv"
+        path: "data/raw/nces_ccd/2022-23/ccd_sch_029_2223_w_1a_083023.csv"
+        rows: 102268
+
+  membership:
+    code: "052"
+    name: "School Membership / Enrollment"
+    edfacts_survey: "C052 - Membership"
+    format: "csv"
+    layout: "long"
+    verified_column_count: 18
+    join_key: "NCESSCH"
+    measure_column: "STUDENT_COUNT"
+    indicator_column: "TOTAL_INDICATOR"
+    flag_column: "DMS_FLAG"
+    total_indicator_contract:
+      primary_choice: "Derived - Education Unit Total minus Adult Education Count"
+      secondary_choice: "Education Unit Total"
+      primary_panel_rule: "The primary analytical panel must filter exclusively to primary_choice to guarantee 1:1 school-year grain."
+      audit_measure_rule: "If secondary_choice is retained, it must be stored as an auxiliary column (total_students_with_adult_ed), never an additional row."
+      profiling_status: >
+        In 2018-19, exact set equality was verified across 99,533 schools between both totals, with exactly 246 schools (0.25%)
+        exhibiting non-zero Adult Education counts. Indicator domains and cohort equivalence across 2019-20 through 2022-23
+        remain unverified until Phase 2 streaming scans. Disaggregated rows ('Category Set A...', 'Subtotal 4...',
+        'Derived - Subtotal...') must be filtered out to prevent count inflation.
+    files:
+      "2018-19":
+        filename: "ccd_SCH_052_1819_l_1a_091019.csv"
+        path: "data/raw/nces_ccd/2018-19/ccd_SCH_052_1819_l_1a_091019.csv"
+        total_rows: 11948167
+        filtered_school_rows: 99533
+      "2019-20":
+        filename: "ccd_SCH_052_1920_l_1a_082120.csv"
+        path: "data/raw/nces_ccd/2019-20/ccd_SCH_052_1920_l_1a_082120.csv"
+        expected_filtered_rows: "~99,000-102,000"
+      "2020-21":
+        filename: "ccd_SCH_052_2021_l_1a_080621.csv"
+        path: "data/raw/nces_ccd/2020-21/ccd_SCH_052_2021_l_1a_080621.csv"
+        expected_filtered_rows: "~99,000-102,000"
+      "2021-22":
+        filename: "ccd_SCH_052_2122_l_1a_071722.csv"
+        path: "data/raw/nces_ccd/2021-22/ccd_SCH_052_2122_l_1a_071722.csv"
+        expected_filtered_rows: "~99,000-102,000"
+      "2022-23":
+        filename: "ccd_sch_052_2223_l_1a_083023.csv"
+        path: "data/raw/nces_ccd/2022-23/ccd_sch_052_2223_l_1a_083023.csv"
+        expected_filtered_rows: "~99,000-102,000"
+
+  staff:
+    code: "059"
+    name: "School Staff FTE"
+    edfacts_survey: "C059 - Staff"
+    format: "csv"
+    layout: "long"
+    verified_column_count: 15
+    join_key: "NCESSCH"
+    measure_column: "TEACHERS"
+    indicator_column: "TOTAL_INDICATOR"
+    flag_column: "DMS_FLAG"
+    total_indicator_contract:
+      expected_value: "Education Unit Total"
+      rationale: "Exclusively 'Education Unit Total' appears in 059 files across inspected years."
+    files:
+      "2018-19":
+        filename: "ccd_sch_059_1819_l_1a_091019.csv"
+        path: "data/raw/nces_ccd/2018-19/ccd_sch_059_1819_l_1a_091019.csv"
+        rows: 99911
+      "2019-20":
+        filename: "ccd_sch_059_1920_l_1a_082120.csv"
+        path: "data/raw/nces_ccd/2019-20/ccd_sch_059_1920_l_1a_082120.csv"
+        rows: 99624
+      "2020-21":
+        filename: "ccd_sch_059_2021_l_1a_080621.csv"
+        path: "data/raw/nces_ccd/2020-21/ccd_sch_059_2021_l_1a_080621.csv"
+        rows: 99763
+      "2021-22":
+        filename: "ccd_sch_059_2122_l_1a_071722.csv"
+        path: "data/raw/nces_ccd/2021-22/ccd_sch_059_2122_l_1a_071722.csv"
+        rows: 100425
+      "2022-23":
+        filename: "ccd_sch_059_2223_l_1a_083023.csv"
+        path: "data/raw/nces_ccd/2022-23/ccd_sch_059_2223_l_1a_083023.csv"
+        rows: 100571
+
+ingestion_protocol:
+  encoding_policy: "deterministic_cascade"
+  primary_encoding: "utf-8"
+  fallback_encoding: "windows-1252"
+  candidate_encodings:
+    - "utf-8"
+    - "windows-1252"
+  silent_decode_error_allowed: false
+  policy_rationale: >
+    Strict UTF-8 is attempted first. On UnicodeDecodeError, fallback to Windows-1252 is performed.
+    Latin-1 is strictly prohibited as a leading decoder because it decodes all 256 bytes without error,
+    which silently masks encoding corruption and mojibake. Silent error discarding (errors='ignore') is prohibited.

@@ -1,0 +1,105 @@
+# Smart School Resource Planning - Forecasting Configuration and Feasibility Contract
+# Phase 1 Data Contract
+
+forecasting:
+  status: "Conditional / Constrained Feasibility"
+  time_series_length: 5  # Annual periods: 2018-19 through 2022-23
+
+  feasibility_assessment:
+    school_level:
+      feasible: false
+      rationale: >
+        Individual school-level time-series forecasting is scientifically and statistically indefensible
+        given T=5 annual observations. With only 5 data points per school, estimation degrees of freedom
+        are near zero, annual volatility at individual facilities is high, grade-span reconfigurations
+        and boundary changes create discontinuous jumps, and the 2020-21 COVID-19 shock introduces an
+        unmodeled structural break. Complex models (ARIMA, Prophet, LSTM) will severely overfit.
+    aggregate_level:
+      feasible: true
+      aggregation_grain: "state_level"  # State or large stable district aggregates
+      rationale: >
+        Aggregating across hundreds of schools pools variance, yielding stable macrodynamic time series.
+        Even at aggregate levels, short series length (T=5) strictly limits model complexity to simple,
+        transparent benchmark heuristics.
+
+  scope:
+    aggregation_levels:
+      primary: "state_id"  # FIPST / State aggregate
+      secondary: "district_id"  # LEAID (restricted to large districts with continuous 5-year reporting)
+    target_variables:
+      - name: "total_students"
+        display_name: "Total Student Enrollment"
+        unit: "Students (headcount)"
+      - name: "teacher_fte"
+        display_name: "Total Teacher FTE"
+        unit: "Full-Time Equivalent (FTE)"
+    forecast_horizon_years: 1
+    benchmark_target_year: "2023-24"
+    timeframe_framing: >
+      Because the source window ends in 2022-23 and the current year is 2026, the 2023-24 output
+      is strictly framed as a retrospective projection based on the available 2018-19 to 2022-23 historical data,
+      not an upcoming forecast. Crucially, because actual 2023-24 outcomes are absent from this dataset, its forecast
+      accuracy CANNOT be evaluated within this workspace. This projection serves strictly as a retrospective baseline
+      model demonstration with scenario bands (+/- 1%, +/- 2%).
+      Empirical forecast accuracy (MAE, WAPE, MAPE) is evaluated exclusively on historical walk-forward backtesting
+      folds (2021-22 and 2022-23) where actual observed outcomes exist.
+
+  candidate_models:
+    naive_persistence:
+      name: "Naive Persistence (Random Walk)"
+      formula: "y_hat_{t+1} = y_t"
+      description: "Projects the most recently observed value forward unchanged. Primary baseline benchmark."
+      complexity: "Zero-parameter baseline"
+
+    drift:
+      name: "Linear Drift Model"
+      formula: "y_hat_{t+1} = y_t + ((y_t - y_1) / (t - 1))"
+      description: "Projects forward using the average historical annual change over observed periods."
+      complexity: "One-parameter trend"
+
+    moving_average_3yr:
+      name: "3-Year Moving Average"
+      formula: "y_hat_{t+1} = (y_t + y_{t-1} + y_{t-2}) / 3"
+      description: "Smooths short-term fluctuations across the last 3 observed school years."
+      complexity: "Fixed-window heuristic"
+
+  rejected_models:
+    high_order_arima:
+      reason: "Requires minimum 30-50 time periods for reliable parameter identification and seasonal differencing."
+    prophet:
+      reason: "Requires multi-year daily/weekly/monthly seasonality; invalid and severely over-parameterized for 5 annual steps."
+    machine_learning_deep_learning:
+      reason: "Extreme risk of spurious correlation and memorization on T=5."
+
+  validation_and_backtesting:
+    method: "Walk-forward expanding window backtesting"
+    folds:
+      fold_1:
+        train_years: ["2018-19", "2019-20", "2020-21"]
+        test_year: "2021-22"
+        description: "Post-shock recovery validation step"
+      fold_2:
+        train_years: ["2018-19", "2019-20", "2020-21", "2021-22"]
+        test_year: "2022-23"
+        description: "Final holdout validation step"
+    metrics:
+      mae:
+        name: "Mean Absolute Error"
+        formula: "mean(|y - y_hat|)"
+        unit: "Native units (students / FTE)"
+      wape:
+        name: "Weighted Absolute Percentage Error"
+        formula: "sum(|y - y_hat|) / sum(y) * 100"
+        unit: "Percent (%)"
+        preferred: true
+      mape:
+        name: "Mean Absolute Percentage Error"
+        formula: "mean(|y - y_hat| / y) * 100"
+        unit: "Percent (%)"
+        caveat: "Subject to distortion if aggregate denominators are small."
+
+  scenario_analysis:
+    enabled: true
+    description: >
+      Because statistical projection has high uncertainty over short spans, scenario bands (+/- 1%, +/- 2%,
+      historical min/max growth) will be provided alongside point forecasts to guide policy planning.

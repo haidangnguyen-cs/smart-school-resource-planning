@@ -1,8 +1,8 @@
 # Data Dictionary
 
-**Last updated:** Phase 0 audit — 2026-10-12  
-**Status:** Schema verified from actual file headers and sample rows  
-**Pending:** Full row counts for 052 Membership files (large-file scan in progress)
+**Last updated:** Phase 1 Data Contract — 2026-10-12<br>
+**Status:** Phase 1 Data Contract established; configuration schemas and analytical field mappings formalized.<br>
+**Ingestion Note:** Full multi-year 052 Membership parsing and filtering deferred to Phase 2 pipeline.
 
 ---
 
@@ -327,17 +327,17 @@ These are **candidate fields** for the school-year panel. Final inclusion depend
 
 ## Fields Marked for Further Investigation
 
-| Field / Topic | Component | Status | Issue / Investigation |
-|---------------|-----------|--------|-----------------------|
-| `TOTAL_INDICATOR` | 052 | Policy choice | Decision required in Phase 1 data contract: `Education Unit Total` (includes adult ed) vs `Derived - Education Unit Total minus Adult Education Count` (excludes adult ed). 2018-19 cohort set equality verified; 2019-20 through 2022-23 unverified until Phase 2. |
-| `DMS_FLAG` | 052 | Unverified | Full domain across 12M rows and 5 years is unverified; sample rows show `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment`. Full profiling deferred to Phase 2. |
-| `STUDENT_COUNT` | 052 | Partially profiled | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Full 5-year missingness counts deferred to Phase 2. |
-| `Character encoding` | All (029, 052, 059) | Unverified | Strict UTF-8 validation not performed; Windows-1252 bytes (e.g. `0x96`) observed. Robust encoding detection and handling deferred to Phase 2 ingestion (no silent discarding). |
-| `SCHID formatting` | All (029, 052, 059) | Empirical vs Official | Empirically 7 characters (`FIPST + NCESSCH[-5:]`), officially 5 digits. Release-specific codebook unconfirmed. |
-| `TEACHERS = 0.0` | 059 | Investigated | ~1,427 schools report 0.0 FTE with `DMS_FLAG = 'Reported'` in 2018-19. Requires business logic in Phase 1 (e.g. check operational status vs valid zero). |
-| `SY_STATUS_TEXT` | 029 | Candidate scoping rule | Candidate rule (e.g. Open/New vs Closed/Inactive/Future) to be evaluated and formally decided in Phase 1 contract, not an automatic default. |
-| `LEVEL = 'Not reported'` | 029 | Pending Phase 2 | ~2,000 schools per year without school level classification. |
-| `RECON_STATUS` | 029 | Pending Phase 2 | Not yet characterized; may affect which records are canonical. |
-| `UPDATED_STATUS_TEXT` | 029 | Pending Phase 2 | Relationship to `SY_STATUS_TEXT` to be evaluated during panel construction. |
-| `G_13_OFFERED` | 029 | Pending Phase 1 | Grade 13 (post-secondary) — scope inclusion to be defined. |
-| `G_AE_OFFERED` | 029 | Pending Phase 1 | Adult Education offered flag — relevant to 052 total indicator choice. |
+| Field / Topic | Component | Status | Phase 1 Contract Decision / Investigation |
+|---------------|-----------|--------|-------------------------------------------|
+| `TOTAL_INDICATOR` | 052 | Resolved (Phase 1) | **Contract Decision:** Primary operational indicator is `Derived - Education Unit Total minus Adult Education Count`. `Education Unit Total` retained for comparative audit. Excludes adult education from K-12 operational headcount. |
+| `DMS_FLAG` | 052 | Deferred (Phase 2) | Full domain across 12M rows and 5 years is unverified; sample rows show `Reported`, `Missing`, `Not reported`, `Suppressed`, `Derived`, `Manual adjustment`. Full profiling deferred to Phase 2. |
+| `STUDENT_COUNT` | 052 | Deferred (Phase 2) | Non-numeric entries observed as empty strings `""` in CSV with suppression/missingness code in `DMS_FLAG`. Full 5-year missingness counts deferred to Phase 2. |
+| `Character encoding` | All (029, 052, 059) | Resolved (Phase 1) | **Contract Policy:** Multi-encoding cascade (strict UTF-8 with fallback to Windows-1252). Silent error suppression (`errors='ignore'`) prohibited in Phase 2 ingestion. |
+| `SCHID formatting` | All (029, 052, 059) | Resolved (Phase 1) | **Contract Policy:** `NCESSCH` (12 chars) is the primary key. `SCHID` retained as raw audit string but prohibited as join key due to empirical discrepancy (`FIPST + NCESSCH[-5:]`). |
+| `TEACHERS = 0.0` | 059 | Resolved (Phase 1) | **Contract Decision:** Valid reported zeros retained in panel with flag `zero_teacher_anomaly = True`. Ratio denominator evaluates to null (`NaN`), never infinite. Non-reported flags remain null. |
+| `SY_STATUS_TEXT` | 029 | Resolved (Phase 1) | **Contract Decision:** Full population preserved in analytical panel with boolean scoping flag `is_operational = (SY_STATUS_TEXT in ['Open', 'New'])`. Core operational KPIs filter on operational cohort. |
+| `LEVEL = 'Not reported'` | 029 | Deferred (Phase 2) | ~2,000 schools per year without school level classification. Detailed imputation or grouping evaluated during Phase 2 profiling. |
+| `RECON_STATUS` | 029 | Deferred (Phase 2) | Not yet characterized; may affect which records are canonical. Full profiling in Phase 2. |
+| `UPDATED_STATUS_TEXT` | 029 | Deferred (Phase 2) | Relationship to `SY_STATUS_TEXT` to be profiled during Phase 2. |
+| `G_13_OFFERED` | 029 | Resolved (Phase 1) | Passthrough attribute; does not affect regular K-12 enrollment totals. |
+| `G_AE_OFFERED` | 029 | Resolved (Phase 1) | Aligns with 052 `TOTAL_INDICATOR` decision: adult education programs separated from regular K-12 student headcounts. |

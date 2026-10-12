@@ -1,0 +1,63 @@
+# Smart School Resource Planning - Project Configuration
+# Phase 1: Business Scope and Data Contract
+
+project:
+  name: "smart-school-resource-planning"
+  version: "0.1.0"
+  description: "Decision-support analytics for public school enrollment and teacher staffing resource allocation"
+  domain: "Education Data Analytics, Resource Planning, Forecasting"
+  phase: "Phase 1 - Business Scope and Data Contract"
+
+time_scope:
+  start_year: "2018-19"
+  end_year: "2022-23"
+  school_years:
+    - "2018-19"
+    - "2019-20"
+    - "2020-21"
+    - "2021-22"
+    - "2022-23"
+  num_years: 5
+  pandemic_anomaly_year: "2020-21"
+
+paths:
+  raw_data_dir: "data/raw/nces_ccd"
+  interim_data_dir: "data/interim/normalized"
+  processed_panels_dir: "data/processed/panels"
+  processed_aggregates_dir: "data/processed/aggregates"
+  processed_forecasts_dir: "data/processed/forecasts"
+  outputs_dir: "outputs"
+  quality_reports_dir: "outputs/quality_reports"
+
+target_panel:
+  grain:
+    - "school_id"
+    - "school_year"
+  primary_key:
+    - "school_id"
+    - "school_year"
+  entity_key: "school_id"
+  year_key: "school_year"
+  file_format: "parquet"
+  output_filename: "school_year_analytical_panel.parquet"
+
+scoping_policy:
+  status_field: "SY_STATUS_TEXT"
+  updated_status_field: "UPDATED_STATUS_TEXT"
+  status_code_note: "UPDATED_STATUS is a numeric integer code, not a text category"
+  candidate_active_statuses:
+    - "Open"
+    - "New"
+  candidate_inactive_statuses:
+    - "Closed"
+    - "Inactive"
+    - "Future"
+  transition_review_statuses:
+    - "Added"
+    - "Changed Boundary/Agency"
+    - "Reopened"
+  policy_decision: >
+    Evaluate active-only cohort ('Open', 'New') for core operational KPIs while preserving the
+    full population in quality audit logs. Ambiguous categories ('Added', 'Changed Boundary/Agency',
+    'Reopened') are placed in an explicit review bucket and evaluated against reported enrollment/staffing
+    data in Phase 2/3 rather than automatically presumed inactive.

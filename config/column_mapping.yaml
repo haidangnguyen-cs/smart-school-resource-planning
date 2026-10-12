@@ -1,0 +1,150 @@
+# Smart School Resource Planning - Column Mapping Contract
+# Maps verified raw CCD source columns to standardized internal analytical field names
+
+standardization_rules:
+  school_year:
+    raw_format: "YYYY-YYYY"
+    raw_pattern: "^[0-9]{4}-[0-9]{4}$"
+    canonical_format: "YYYY-YY"
+    canonical_pattern: "^[0-9]{4}-[0-9]{2}$"
+    canonical_length: 7
+    transformation: "f'{val[:4]}-{val[-2:]}'"
+    description: >
+      Raw NCES CCD files across Directory (029), Membership (052), and Staff (059) report school years
+      as 9-character 'YYYY-YYYY' strings (e.g., '2018-2019'). The project contract standardizes all school year
+      values to the canonical 7-character 'YYYY-YY' representation (e.g., '2018-19') matching config/project.yaml
+      time_scope. Ingestion adapters must apply this explicit transformation before downstream panel construction and joins.
+
+directory:
+  source_component: "029"
+  mappings:
+    NCESSCH:
+      target: "school_id"
+      type: "string"
+      length: 12
+      description: "12-digit NCES unique school identifier (primary key)"
+    LEAID:
+      target: "district_id"
+      type: "string"
+      length: 7
+      description: "7-digit NCES district identifier"
+    FIPST:
+      target: "state_fips"
+      type: "string"
+      length: 2
+      description: "2-digit Federal Information Processing Standard state code"
+    ST:
+      target: "state_code"
+      type: "string"
+      length: 2
+      description: "2-character postal state abbreviation"
+    STATENAME:
+      target: "state_name"
+      type: "string"
+      description: "Full state name"
+    SCH_NAME:
+      target: "school_name"
+      type: "string"
+      description: "Reported public school name"
+    LEA_NAME:
+      target: "district_name"
+      type: "string"
+      description: "Local Education Agency (district) name"
+    SCHOOL_YEAR:
+      target: "school_year"
+      type: "string"
+      raw_format: "YYYY-YYYY"
+      canonical_format: "YYYY-YY"
+      length: 7
+      transformation: "f'{val[:4]}-{val[-2:]}'"
+      description: "Standardized canonical 7-character school year identifier (e.g. '2018-19' from raw '2018-2019')"
+    SY_STATUS_TEXT:
+      target: "school_status"
+      type: "string"
+      description: "School operational status category (e.g. 'Open', 'New', 'Closed')"
+    SY_STATUS:
+      target: "status_code"
+      type: "integer"
+      description: "Numeric operational status code"
+    SCH_TYPE_TEXT:
+      target: "school_type"
+      type: "string"
+      description: "School category (Regular, Alternative, Special Education, Career/Tech)"
+    SCH_TYPE:
+      target: "type_code"
+      type: "integer"
+      description: "Numeric school category code"
+    LEVEL:
+      target: "school_level"
+      type: "string"
+      description: "NCES school level (Elementary, Middle, High, Other)"
+    GSLO:
+      target: "grade_low"
+      type: "string"
+      description: "Lowest instructional grade offered"
+    GSHI:
+      target: "grade_high"
+      type: "string"
+      description: "Highest instructional grade offered"
+    CHARTER_TEXT:
+      target: "is_charter"
+      type: "string"
+      description: "Charter school flag ('Yes' / 'No')"
+
+membership:
+  source_component: "052"
+  mappings:
+    NCESSCH:
+      target: "school_id"
+      type: "string"
+      length: 12
+      description: "12-digit school join key"
+    SCHOOL_YEAR:
+      target: "school_year"
+      type: "string"
+      raw_format: "YYYY-YYYY"
+      canonical_format: "YYYY-YY"
+      length: 7
+      transformation: "f'{val[:4]}-{val[-2:]}'"
+      description: "Standardized canonical 7-character school year identifier (e.g. '2018-19' from raw '2018-2019')"
+    STUDENT_COUNT:
+      target: "total_students"
+      type: "integer_or_null"
+      description: "Total student enrollment headcount"
+    TOTAL_INDICATOR:
+      target: "enrollment_total_indicator"
+      type: "string"
+      description: "Aggregation indicator filter"
+    DMS_FLAG:
+      target: "enrollment_data_flag"
+      type: "string"
+      description: "Data missingness/suppression indicator"
+
+staff:
+  source_component: "059"
+  mappings:
+    NCESSCH:
+      target: "school_id"
+      type: "string"
+      length: 12
+      description: "12-digit school join key"
+    SCHOOL_YEAR:
+      target: "school_year"
+      type: "string"
+      raw_format: "YYYY-YYYY"
+      canonical_format: "YYYY-YY"
+      length: 7
+      transformation: "f'{val[:4]}-{val[-2:]}'"
+      description: "Standardized canonical 7-character school year identifier (e.g. '2018-19' from raw '2018-2019')"
+    TEACHERS:
+      target: "teacher_fte"
+      type: "float_or_null"
+      description: "Full-time equivalent classroom teacher count"
+    TOTAL_INDICATOR:
+      target: "staff_total_indicator"
+      type: "string"
+      description: "Aggregation level (always 'Education Unit Total')"
+    DMS_FLAG:
+      target: "teacher_data_flag"
+      type: "string"
+      description: "FTE data missingness/suppression status"

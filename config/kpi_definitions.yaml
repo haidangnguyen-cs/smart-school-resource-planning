@@ -1,0 +1,279 @@
+# Smart School Resource Planning - KPI Definitions and Formulas
+# Phase 1 Data Contract
+
+kpis:
+  total_students:
+    name: "Total Student Enrollment"
+    category: "Demand"
+    definition: "Total student headcount enrollment for the reporting school in the given school year."
+    formula: "STUDENT_COUNT where TOTAL_INDICATOR = 'Derived - Education Unit Total minus Adult Education Count'"
+    unit: "Students (headcount)"
+    required_columns:
+      - "school_id"
+      - "school_year"
+      - "total_students"
+    eligibility_criteria:
+      - "total_students is not null"
+      - "total_students >= 0"
+    caveats: >
+      Primary contract uses Derived minus AE to represent PK-12 regular operational enrollment.
+      Schools offering adult education (246 schools in 2018-19) report additional AE students under EU Total.
+
+  teacher_fte:
+    name: "Total Teacher FTE"
+    category: "Supply"
+    definition: "Total full-time equivalent (FTE) classroom teachers reported for the school."
+    formula: "TEACHERS where DMS_FLAG = 'Reported'"
+    unit: "Full-Time Equivalent (FTE decimal)"
+    required_columns:
+      - "school_id"
+      - "school_year"
+      - "teacher_fte"
+      - "teacher_data_flag"
+    eligibility_criteria:
+      - "teacher_data_flag == 'Reported'"
+      - "teacher_fte is not null"
+      - "teacher_fte >= 0.0"
+    caveats: >
+      Non-Reported flags ('Missing', 'Not reported', 'Suppressed') represent missing data (~3.1% in 2018-19)
+      and must never be coerced to zero. Schools reporting 0.0 FTE (~1.4% in 2018-19) are retained as valid
+      zeros but flagged for administrative review.
+
+  student_teacher_ratio:
+    name: "Student-to-Teacher Ratio"
+    category: "Resource Pressure"
+    definition: "Ratio of total student headcount to full-time equivalent classroom teachers."
+    formula: "total_students / teacher_fte"
+    unit: "Students per teacher FTE"
+    required_columns:
+      - "total_students"
+      - "teacher_fte"
+      - "teacher_data_flag"
+    eligibility_criteria:
+      - "total_students is not null"
+      - "teacher_fte is not null"
+      - "teacher_data_flag == 'Reported'"
+      - "teacher_fte > 0.0"
+    zero_denominator_handling: "Set to null (NaN) and flag as 'zero_teacher_anomaly'; do not compute infinite ratio"
+    caveats: >
+      CRITICAL: This metric measures high-level staffing allocation per enrolled student. It is NOT class size,
+      does not account for co-teaching, specialty teachers, or daily period schedules, and must never be described
+      as class size.
+
+  enrollment_growth_yoy_pct:
+    name: "Year-over-Year Enrollment Growth Rate"
+    category: "Trend"
+    definition: "Annual percentage change in student enrollment from school year t-1 to school year t."
+    formula: "((total_students[t] - total_students[t-1]) / total_students[t-1]) * 100"
+    unit: "Percent (%)"
+    required_columns:
+      - "school_id"
+      - "school_year"
+      - "total_students"
+    eligibility_criteria:
+      - "School present in consecutive school years (t and t-1)"
+      - "total_students[t] is not null"
+      - "total_students[t-1] is not null"
+      - "total_students[t-1] > 0"
+    cohort_rule: "Computed strictly on common-school longitudinal cohorts to eliminate school opening/closing composition bias."
+
+  teacher_fte_growth_yoy_pct:
+    name: "Year-over-Year Teacher FTE Growth Rate"
+    category: "Trend"
+    definition: "Annual percentage change in classroom teacher FTE from school year t-1 to school year t."
+    formula: "((teacher_fte[t] - teacher_fte[t-1]) / teacher_fte[t-1]) * 100"
+    unit: "Percent (%)"
+    required_columns:
+      - "school_id"
+      - "school_year"
+      - "teacher_fte"
+      - "teacher_data_flag"
+    eligibility_criteria:
+      - "School present in consecutive school years (t and t-1)"
+      - "teacher_data_flag[t] == 'Reported' and teacher_data_flag[t-1] == 'Reported'"
+      - "teacher_fte[t] is not null and teacher_fte[t-1] is not null"
+      - "teacher_fte[t-1] > 0.0"
+
+  ratio_growth_yoy_pct:
+    name: "Year-over-Year Student-to-Teacher Ratio Growth Rate"
+    category: "Trend"
+    definition: "Annual percentage change in the student-to-teacher ratio from school year t-1 to school year t."
+    formula: "((student_teacher_ratio[t] - student_teacher_ratio[t-1]) / student_teacher_ratio[t-1]) * 100"
+    unit: "Percent (%)"
+    required_columns:
+      - "school_id"
+      - "school_year"
+      - "student_teacher_ratio"
+      - "total_students"
+      - "teacher_fte"
+      - "teacher_data_flag"
+    eligibility_criteria:
+      - "School present in consecutive school years (t and t-1)"
+      - "student_teacher_ratio[t] is valid and non-null (total_students[t] >= 0, teacher_fte[t] > 0.0, teacher_data_flag[t] == 'Reported')"
+      - "student_teacher_ratio[t-1] is valid and non-null (total_students[t-1] >= 0, teacher_fte[t-1] > 0.0, teacher_data_flag[t-1] == 'Reported')"
+      - "student_teacher_ratio[t-1] > 0.0"
+    zero_denominator_handling: >
+      Set to null (NaN) if student_teacher_ratio[t-1] is zero or null (e.g. 0 students in prior year, or missing/zero teacher FTE).
+      Never compute infinite ratio growth; records with undefined prior-year ratio are flagged as unassessed growth.
+    cohort_rule: "Computed strictly on common-school longitudinal cohorts with valid reported ratios in consecutive years."
+    caveats: >
+      Measures the escalation rate of high-level staffing allocation. Requires positive valid staffing ratios in consecutive years.
+      An undefined ratio in year t-1 (due to zero or missing teacher FTE, or zero enrollment) leaves ratio growth unassessed.
+
+  growth_gap_pct_points:
+    name: "Enrollment-Staffing Growth Gap"
+    category: "Resource Pressure"
+    definition: "Difference between enrollment growth rate and teacher FTE growth rate."
+    formula: "enrollment_growth_yoy_pct - teacher_fte_growth_yoy_pct"
+    unit: "Percentage points (%p)"
+    required_columns:
+      - "enrollment_growth_yoy_pct"
+      - "teacher_fte_growth_yoy_pct"
+    eligibility_criteria:
+      - "Both enrollment_growth_yoy_pct and teacher_fte_growth_yoy_pct are valid and non-null"
+    interpretation: >
+      A positive gap indicates student enrollment is growing faster than teacher staffing (increasing resource pressure).
+      A negative gap indicates teacher staffing is expanding faster than enrollment.
+
+  peer_group_benchmarking:
+    description: >
+      Adhering to Section 1.3 and Section 3.5 of the master plan, peer-group benchmarking must never
+      silently compare unlike school populations or invent statutory thresholds without authoritative standards.
+    eligible_p90_peer_groups:
+      school_type: "Regular School"
+      school_levels:
+        - "Elementary"
+        - "Middle"
+        - "High"
+      stratification: ["school_year", "school_level"]
+      rationale: >
+        P90 ratio comparisons are statistically meaningful only within homogeneous regular instructional levels.
+        Phase 4 exploratory data analysis is responsible for reporting actual peer-group stratum sizes and assessing
+        whether group sizes support robust decile estimation.
+    unbenchmarked_peer_groups:
+      eligibility_rule: >
+        A school is eligible for P90 peer-group comparison if and only if school_type == 'Regular School'
+        AND school_level in ['Elementary', 'Middle', 'High']. Every school level and school type outside this
+        exact eligible set is classified as unbenchmarked.
+      non_regular_school_types:
+        - "Special Education School"
+        - "Alternative School"
+        - "Career and Technical School"
+      non_regular_types_rationale: >
+        Specialized instructional models may have different staffing requirements and operating mandates.
+        They must not be benchmarked against regular-school P90 values without suitable evidence and authoritative
+        standards. Pooling them into regular school deciles would distort distributions and produce misleading flags.
+      observed_non_eligible_levels:
+        - "Secondary"
+        - "Other"  # Mixed/multi-grade spans (e.g., K-12, 6-12)
+        - "Prekindergarten"
+        - "Ungraded"
+        - "Adult Education"
+        - "Not applicable"
+        - "Not reported"  # Missing level metadata (~2,000 schools/yr)
+        - "Missing"
+      catch_all_rule: >
+        Any school level outside the exact set {'Elementary', 'Middle', 'High'}—including 'Secondary', 'Adult Education',
+        'Not applicable', or any newly observed, unmapped, or unexpected string value in raw releases—is automatically
+        classified as unbenchmarked. No school outside the exact eligible set may ever be admitted to regular P90 comparison pools.
+      handling_policy: >
+        Peer-group P90 percentiles are NOT computed for these unbenchmarked populations.
+        In the absence of authoritative statutory ratio standards in NCES CCD, the platform strictly refuses
+        to invent arbitrary numerical thresholds.
+        Schools in unbenchmarked peer groups bypass Priority 2 (High Current Ratio) and are assigned
+        peer_group_status: 'Unbenchmarked / Specialized Peer Group'. They remain eligible for longitudinal
+        trend evaluation (Priority 3: Rapidly Rising Ratio, Priority 4: Staffing Deficit) if historical baseline
+        data is available, or are routed to Priority 5 (Growth Unassessed / Incomplete Growth Data).
+    peer_group_status_dimension:
+      name: "Peer Group Benchmarking Status"
+      description: >
+        Orthogonal classification dimension distinguishing institutions evaluated against valid peer-group P90
+        distributions from unbenchmarked/specialized institutions. Must be reported alongside resource_pressure_tier.
+      categories:
+        benchmarked: "Benchmarked Regular Peer Group"
+        unbenchmarked: "Unbenchmarked / Specialized Peer Group"
+
+  resource_pressure_tier:
+    name: "Resource Pressure Classification"
+    category: "Decision Support"
+    definition: "Hierarchical, mutually exclusive categorization identifying public school facilities warranting administrative review, adhering directly to Section 3.5 of the master plan."
+    evaluation_order:
+      priority_1: "Incomplete Data or Status Review"
+      priority_2: "High Current Ratio"
+      priority_3: "Rapidly Rising Ratio"
+      priority_4: "Staffing Growth Deficit"
+      priority_5: "Growth Unassessed / Incomplete Growth Data"
+      priority_6: "Stable / Balanced"
+    rules:
+      priority_1_incomplete_or_status_review:
+        name: "Incomplete Data or Status Review"
+        condition: >
+          total_students is null OR teacher_fte is null OR teacher_data_flag != 'Reported'
+          OR teacher_fte == 0.0 (zero_teacher_anomaly) OR is_operational is False
+          OR school_status in ['Added', 'Changed Boundary/Agency', 'Reopened']
+        description: >
+          Records with missing enrollment, non-reported or suppressed teacher FTE, reported zero teacher FTE,
+          non-operational status, or transition-review operational statuses ('Added', 'Changed Boundary/Agency', 'Reopened')
+          cannot yield standard operational staffing ratios or trend metrics without administrative verification.
+          Routed here with top priority to prevent erroneous downstream tier assignment.
+      priority_2_high_current_ratio:
+        name: "High Current Ratio"
+        condition: >
+          Complete operational data AND school_type == 'Regular School'
+          AND school_level in ['Elementary', 'Middle', 'High']
+          AND student_teacher_ratio >= P90[school_year, school_level]
+        tie_handling: "Inclusive inequality (ratio >= P90). P90 is computed per regular school level (Elementary/Middle/High) within the given school year."
+        peer_group_scope: "Regular School within Elementary, Middle, or High instructional levels only."
+        unbenchmarked_handling: >
+          Every school level outside {'Elementary', 'Middle', 'High'} (including 'Secondary', 'Not applicable',
+          'Adult Education', 'Other', 'Prekindergarten', 'Ungraded', 'Not reported', or unexpected levels) and every
+          non-regular school type is excluded from regular P90 pools and bypasses Priority 2 to prevent invalid
+          cross-model comparison without authoritative statutory standards.
+        description: "Identifies regular public school facilities in the top decile of staffing ratio for their instructional level."
+      priority_3_rapidly_rising_ratio:
+        name: "Rapidly Rising Ratio"
+        condition: "Complete data AND NOT Priority 2 AND has_valid_growth_metrics AND ratio_growth_yoy_pct >= tau_ratio_rise"
+        unresolved_threshold: >
+          tau_ratio_rise is an explicitly provisional candidate threshold (e.g. +15.0% YoY ratio increase)
+          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration in Phase 5.
+        provisional_threshold: true
+        description: "Identifies schools where staffing ratio escalated rapidly compared to the previous school year."
+      priority_4_staffing_growth_deficit:
+        name: "Staffing Growth Deficit"
+        condition: "Complete data AND NOT Priority 2 AND NOT rapidly_rising AND has_valid_growth_metrics AND growth_gap_pct_points >= tau_growth_gap"
+        unresolved_threshold: >
+          tau_growth_gap is an explicitly provisional candidate threshold (e.g. +5.0 percentage points)
+          for decision-support prototyping, NOT an approved statutory policy value. Subject to stakeholder calibration in Phase 5.
+        provisional_threshold: true
+        description: "Identifies schools where student enrollment grew significantly faster than teacher FTE staffing."
+      priority_5_growth_unassessed:
+        name: "Growth Unassessed / Incomplete Growth Data"
+        condition: "Complete data AND NOT Priority 2 AND (has_valid_growth_metrics is False)"
+        description: >
+          Handles schools with valid current-year ratio where consecutive-year growth metrics cannot be calculated.
+          Covers: (a) base year 2018-19 (no prior year in dataset), (b) newly opened schools without prior-year record,
+          and (c) schools where a prior-year record exists but prior-year enrollment or teacher FTE was missing,
+          non-reported, or zero (preventing valid growth denominator calculation).
+          Explicitly prevents unassessed schools from defaulting to Stable.
+      priority_6_stable_balanced:
+        name: "Stable / Balanced"
+        condition: "Complete data AND NOT Priority 2 AND has_valid_growth_metrics AND ratio_growth_yoy_pct < tau_ratio_rise AND growth_gap_pct_points < tau_growth_gap"
+        description: "Baseline operational facilities with assessed, stable staffing allocations within normal operating bounds."
+        unbenchmarked_interpretation_caveat: >
+          CRITICAL CAVEAT: For schools with peer_group_status == 'Unbenchmarked / Specialized Peer Group',
+          assignment to Priority 6 (Stable / Balanced) denotes solely that available longitudinal trend indicators did not
+          cross provisional escalation thresholds (tau_ratio_rise, tau_growth_gap). It does NOT imply or certify that
+          the school's absolute staffing levels or student-to-teacher ratio have been shown to be adequate, balanced, or
+          compliant with programmatic guidelines, because no peer-group distribution or statutory standard exists for these institutions.
+    unit: "Categorical tier"
+    transparency_rule: >
+      Rule-based hierarchical evaluation; mutually exclusive. Percentile thresholds are dynamic per regular school level and year.
+      All candidate numerical cutoffs (tau_ratio_rise, tau_growth_gap) are explicitly documented as provisional policy parameters.
+
+  data_quality_metrics:
+    teacher_missingness_rate:
+      definition: "Percentage of schools where teacher FTE is not Reported"
+      formula: "COUNT(DMS_FLAG != 'Reported') / COUNT(*) * 100"
+    enrollment_missingness_rate:
+      definition: "Percentage of schools where total enrollment is missing or suppressed"
+      formula: "COUNT(total_students is null) / COUNT(*) * 100"
